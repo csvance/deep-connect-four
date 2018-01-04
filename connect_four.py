@@ -245,11 +245,9 @@ class ConnectFourGame(object):
 
 class ConnectFourModel(object):
     def __init__(self, use_gpu=True, epsilon: float=1.0):
-
         self.epsilon = epsilon
         model = Sequential()
         model.add(Dense(ConnectFourGame.NUM_STATES, input_dim=ConnectFourGame.NUM_STATES, activation='relu'))
-        model.add(Dense(ConnectFourGame.NUM_STATES, activation='relu'))
         model.add(Dense(len(C4Move), activation='softmax'))
         model.compile(optimizer=Adam(lr=0.001), loss='sparse_categorical_crossentropy')
         model.summary()
@@ -264,7 +262,6 @@ class ConnectFourModel(object):
     def train(self, data, labels, reward=1):
         self._model.fit(data, labels, batch_size=1, verbose=0, epochs=reward)
 
-    # Valid moves is a map of valid moves, ie [1, 1, 1, 0, 0, 1, 0, 1]
     def predict(self, state, valid_moves: np.ndarray) -> C4Move:
         if np.random.rand() <= self.epsilon:
             return np.random.choice([C4Move.COLUMN1, C4Move.COLUMN2, C4Move.COLUMN3, C4Move.COLUMN4,
@@ -280,6 +277,10 @@ class ConnectFourModel(object):
         predictions = predictions / sigma
 
         return C4Move(np.random.choice([i for i in range(0, 8)], p=predictions))
+
+    def decay(self, epsilon_min=0.01, epsilon_decay=0.999):
+        self.epsilon = max(epsilon_min, self.epsilon*epsilon_decay)
+        print("Epsilon: %f" % self.epsilon)
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)
@@ -398,6 +399,9 @@ def ai_vs_ai(weight_file, epsilon):
             # Reset
             c4.reset()
 
+            # Decay epsilon
+            c4ai.decay()
+
 
 if __name__ == '__main__':
     np.seterr(all='raise')
@@ -405,7 +409,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode')
     parser.add_argument('--weights-file')
-    parser.add_argument('--epsilon', type=float)
+    parser.add_argument('--epsilon', type=float, default=0.)
     args = parser.parse_args()
 
     if args.mode == 'hvh':
@@ -418,4 +422,4 @@ if __name__ == '__main__':
         print("Valid modes are: ")
         print("hvh - Human vs Human")
         print("hva - Huamn vs AI")
-        print("ava - AI vs AI")
+        print("ava - AI vs AI (Training)")
