@@ -276,8 +276,8 @@ class ConnectFourModel(object):
     def train(self, data, labels, reward=1):
         self._model.fit(data, labels, batch_size=1, verbose=0, epochs=reward)
 
-    def predict(self, state, valid_moves: np.ndarray) -> C4Move:
-        if np.random.rand() <= self.epsilon:
+    def predict(self, state, valid_moves: np.ndarray, epsilon_weight=1.0) -> C4Move:
+        if np.random.rand() <= epsilon_weight*self.epsilon:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
                 if valid_moves[idx] == 1:
@@ -372,7 +372,11 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
     time_string = datetime.datetime.now().strftime('%m-%d-%y-%H-%M-%S')
     game_no = 0
     red_wins = 0
+    red_win_streak = 0
+    red_loss_streak = 0
     black_wins = 0
+    black_win_streak = 0
+    black_loss_streak = 0
 
     c4 = ConnectFourGame()
     c4ai = ConnectFourModel(epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min)
@@ -395,14 +399,26 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
             c4.reset()
             continue
 
-        move = c4ai.predict(state, valid_moves=valid_moves)
+        epsilon_weight = 1.
+        if current_team == C4Team.RED:
+            epsilon_weight += red_loss_streak / 10.
+        elif current_team == C4Team.BLACK:
+            epsilon_weight += black_loss_streak / 10.
+        move = c4ai.predict(state, valid_moves=valid_moves, epsilon_weight=epsilon_weight)
+        
         result = c4.action(move, current_team)
         if result == C4ActionResult.VICTORY:
             # Update stats
             if current_team == C4Team.RED:
                 red_wins += 1
+                red_win_streak += 1
+                red_loss_streak = 0
+                black_win_streak = 0
             elif current_team == C4Team.BLACK:
                 black_wins += 1
+                black_win_streak += 1
+                black_loss_streak = 0
+                red_win_streak = 0
 
             print("Red: %d Black %d Epsilon: %f" % (red_wins, black_wins, c4ai.epsilon))
 
