@@ -5,6 +5,7 @@ import tensorflow as tf
 from keras.backend import set_session
 from keras.layers import Dense
 from keras.models import Sequential
+from keras.optimizers import Adam
 
 
 @unique
@@ -246,9 +247,10 @@ class ConnectFourModel(object):
     def __init__(self, use_gpu=True):
         model = Sequential()
         model.add(Dense(ConnectFourGame.NUM_STATES, input_dim=ConnectFourGame.NUM_STATES, activation='relu'))
+        model.add(Dense(ConnectFourGame.NUM_STATES, activation='relu'))
         model.add(Dense(len(C4Move), activation='softmax'))
+        model.compile(optimizer=Adam(lr=0.001), loss='sparse_categorical_crossentropy')
         model.summary()
-        model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
         self._model = model
 
         if use_gpu:
@@ -393,11 +395,19 @@ def ai_vs_ai(weight_file):
 if __name__ == '__main__':
     np.seterr(all='raise')
 
-    import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('weight_file')
+    parser.add_argument('mode')
+    parser.add_argument('--weight-file')
     args = parser.parse_args()
 
-    #human_vs_human()
-    ai_vs_ai(args.weight_file)
-    #human_vs_ai(args.weight_file)
+    if args.mode == 'hvh':
+        human_vs_human()
+    elif args.mode == 'ava':
+        ai_vs_ai(args.weights_file)
+    elif args.mode == 'hva':
+        human_vs_ai(args.weights_file)
+    else:
+        print("Valid modes are: ")
+        print("hvh - Human vs Human")
+        print("hva - Huamn vs AI")
+        print("ava - AI vs AI")
