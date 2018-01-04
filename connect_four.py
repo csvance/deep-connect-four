@@ -6,7 +6,7 @@ from enum import Enum, unique
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Embedding
+from keras.layers import Dense, Embedding, Flatten
 from keras.models import Sequential
 from keras.optimizers import Adam
 
@@ -205,19 +205,22 @@ class ConnectFourGame(object):
             np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.SELF.value])
             np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.ENEMY.value])
 
-        def one_hot_list(idx_list: np.ndarray, size: int):
-            ret_list = []
-            for idx, item in enumerate(idx_list):
-                ret = [0] * size
-                ret[int(item)] = 1
-                ret_list.extend(ret)
-            return ret_list
+        def one_hot(idx: int, size: int):
+            ret = [0.]*size
+            ret[int(idx)] = 1.
+            return ret
 
-        return np.array(one_hot_list(state.reshape(6 * 7), len(C4SlotState)))
+        one_hot_rows = np.zeros((6, 7, 3))
+        for row_idx, row in enumerate(state):
+            for column_idx, column in enumerate(row):
+                one_hot_rows[row_idx][column_idx] = one_hot(column, 3)
+
+        return one_hot_rows
+
 
     def display(self) -> str:
 
-        output = "(1)(2)(3)(4)(5)(6)(7)(8)\n"
+        output = "(1)(2)(3)(4)(5)(6)(7)\n"
         for row in self._state:
             for slot in row:
                 if slot == C4SlotState.EMPTY.value:
@@ -256,10 +259,11 @@ class ConnectFourModel(object):
         print("epsilon_decay: %f" % self.epsilon_decay)
 
         model = Sequential()
-        model.add(Dense(ConnectFourGame.STATE_DIM*8, input_dim=ConnectFourGame.STATE_DIM, activation='relu'))
+        model.add(Dense(ConnectFourGame.STATE_DIM*8, input_shape=(6, 7, 3), activation='relu'))
         model.add(Dense(ConnectFourGame.STATE_DIM*8, activation='relu'))
+        model.add(Flatten())
         model.add(Dense(len(C4Move), activation='softmax'))
-        model.compile(optimizer=Adam(lr=0.01), loss='sparse_categorical_crossentropy')
+        model.compile(optimizer=Adam(lr=0.001), loss='sparse_categorical_crossentropy')
         model.summary()
         self._model = model
 
