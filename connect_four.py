@@ -277,8 +277,16 @@ class ConnectFourModel(object):
 
         # Re-normalize
         sigma = np.sum(predictions)
-        predictions = predictions / sigma
-
+        try:
+            predictions = predictions / sigma
+        except FloatingPointError:
+            # If we had a floating point exception, it means no valid moves had non-zero p_values.
+            # Choose a valid move at random
+            potential_moves = []
+            for idx in range(0, len(valid_moves)):
+                if valid_moves[idx] == 1:
+                    potential_moves.append(C4Move(idx))
+            return np.random.choice(potential_moves)
         return C4Move(np.argmax(predictions))
 
     def decay(self, epsilon_min=0.01, epsilon_decay=0.999):
