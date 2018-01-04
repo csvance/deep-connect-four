@@ -39,7 +39,6 @@ class C4Move(Enum):
     COLUMN5 = 4
     COLUMN6 = 5
     COLUMN7 = 6
-    COLUMN8 = 7
 
 
 @unique
@@ -51,7 +50,7 @@ class C4ActionResult(Enum):
 
 
 class ConnectFourGame(object):
-    NUM_STATES = 6 * 8 * 3
+    NUM_STATES = 6 * 7 * 3
 
     def __init__(self):
         self.turn = None
@@ -66,7 +65,7 @@ class ConnectFourGame(object):
     def reset(self):
         self.turn = 0
         self.winner = None
-        self._state = np.zeros((6, 8))
+        self._state = np.zeros((6, 7))
         self._red_states = []
         self._red_labels = []
         self._black_states = []
@@ -94,7 +93,7 @@ class ConnectFourGame(object):
             return C4ActionResult.VICTORY
 
         # Right
-        spaces = self._state[row][column:min(column + 4, 8)]
+        spaces = self._state[row][column:min(column + 4, 7)]
         if check_in_a_row():
             return C4ActionResult.VICTORY
 
@@ -182,7 +181,7 @@ class ConnectFourGame(object):
 
     def valid_moves(self) -> np.ndarray:
         valid_moves = []
-        for column in range(0, 8):
+        for column in range(0, 7):
             valid = False
             for row in reversed(range(0, 6)):
                 if self._state[row][column] == C4SlotState.EMPTY.value:
@@ -214,7 +213,7 @@ class ConnectFourGame(object):
                 ret_list.extend(ret)
             return ret_list
 
-        return np.array(one_hot_list(state.reshape(6 * 8), len(C4SlotState)))
+        return np.array(one_hot_list(state.reshape(6 * 7), len(C4SlotState)))
 
     def display(self) -> str:
 
