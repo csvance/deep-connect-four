@@ -6,7 +6,7 @@ from enum import Enum, unique
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense
+from keras.layers import Dense, Embedding
 from keras.models import Sequential
 from keras.optimizers import Adam
 
@@ -50,7 +50,7 @@ class C4ActionResult(Enum):
 
 
 class ConnectFourGame(object):
-    NUM_STATES = 6 * 7 * 3
+    STATE_DIM = 6 * 7 * 3
 
     def __init__(self):
         self.turn = None
@@ -256,9 +256,10 @@ class ConnectFourModel(object):
         print("epsilon_decay: %f" % self.epsilon_decay)
 
         model = Sequential()
-        model.add(Dense(ConnectFourGame.NUM_STATES, input_dim=ConnectFourGame.NUM_STATES, activation='relu'))
+        model.add(Dense(ConnectFourGame.STATE_DIM*8, input_dim=ConnectFourGame.STATE_DIM, activation='relu'))
+        model.add(Dense(ConnectFourGame.STATE_DIM*8, activation='relu'))
         model.add(Dense(len(C4Move), activation='softmax'))
-        model.compile(optimizer=Adam(lr=0.001), loss='sparse_categorical_crossentropy')
+        model.compile(optimizer=Adam(lr=0.01), loss='sparse_categorical_crossentropy')
         model.summary()
         self._model = model
 
@@ -300,8 +301,6 @@ class ConnectFourModel(object):
 
     def decay(self):
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
-        if self.epsilon > self.epsilon_min:
-            print("Epsilon: %f" % self.epsilon)
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)
@@ -333,7 +332,8 @@ def human_vs_ai(weight_file):
     c4 = ConnectFourGame()
     c4ai = ConnectFourModel()
     try:
-        c4ai.load(weight_file)
+        if weight_file is not None:
+            c4ai.load(weight_file)
     except OSError:
         print("Warning: could not load weights file!")
         pass
@@ -400,7 +400,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
             elif current_team == C4Team.BLACK:
                 black_wins += 1
 
-            print("Red: %d Black %d" % (red_wins, black_wins))
+            print("Red: %d Black %d Epsilon: %f" % (red_wins, black_wins, c4ai.epsilon))
 
             # Train
             data, labels = c4.training_data()
