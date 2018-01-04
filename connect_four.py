@@ -6,7 +6,7 @@ from keras.backend import set_session
 from keras.layers import Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
-
+import traceback
 
 @unique
 class C4Team(Enum):
@@ -264,8 +264,11 @@ class ConnectFourModel(object):
 
     def predict(self, state, valid_moves: np.ndarray) -> C4Move:
         if np.random.rand() <= self.epsilon:
-            return np.random.choice([C4Move.COLUMN1, C4Move.COLUMN2, C4Move.COLUMN3, C4Move.COLUMN4,
-                                     C4Move.COLUMN5, C4Move.COLUMN6, C4Move.COLUMN7, C4Move.COLUMN8])
+            potential_moves = []
+            for idx in range(0, len(valid_moves)):
+                if valid_moves[idx] == 1:
+                    potential_moves.append(C4Move(idx))
+            return np.random.choice(potential_moves)
 
         predictions = self._model.predict(np.array([state]))[0]
 
@@ -276,11 +279,12 @@ class ConnectFourModel(object):
         sigma = np.sum(predictions)
         predictions = predictions / sigma
 
-        return C4Move(np.random.choice([i for i in range(0, 8)], p=predictions))
+        return C4Move(np.argmax(predictions))
 
     def decay(self, epsilon_min=0.01, epsilon_decay=0.999):
         self.epsilon = max(epsilon_min, self.epsilon*epsilon_decay)
-        print("Epsilon: %f" % self.epsilon)
+        if self.epsilon > epsilon_min:
+            print("Epsilon: %f" % self.epsilon)
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)
@@ -372,19 +376,11 @@ def ai_vs_ai(weight_file, epsilon):
         if result == C4ActionResult.VICTORY:
             # Update stats
             if current_team == C4Team.RED:
-                print("Red Wins!")
                 red_wins += 1
             elif current_team == C4Team.BLACK:
-                print("Black Wins!")
                 black_wins += 1
 
             print("Red: %d Black %d" % (red_wins, black_wins))
-            if red_wins > black_wins:
-                print("Red is winning!")
-            elif black_wins > red_wins:
-                print("Black is winning!")
-            else:
-                print("Teams are tied!")
 
             # Train
             data, labels = c4.training_data()
