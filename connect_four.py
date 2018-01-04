@@ -245,7 +245,7 @@ class ConnectFourGame(object):
 
 
 class ConnectFourModel(object):
-    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.99999, epsilon_min=0.01):
+    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.999, epsilon_min=0.01):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -426,7 +426,7 @@ if __name__ == '__main__':
     parser.add_argument('mode')
     parser.add_argument('--weights-file')
     parser.add_argument('--epsilon', type=float, default=1.)
-    parser.add_argument('--epsilon-decay', type=float, default=0.99999)
+    parser.add_argument('--epsilon-decay', type=float, default=0.999)
     parser.add_argument('--epsilon-min', type=float, default=0.01)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
