@@ -5,4 +5,4 @@ This is an attempt at creating a reinforcement learning "Connect Four" AI. Becau
 ## Training
  
  Training is done in AI vs AI mode:
- ```python connect_four.py ava --epsilon 1.0 --decay 0.99999 ```
+ ```python connect_four.py ava```
