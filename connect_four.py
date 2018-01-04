@@ -1,0 +1,403 @@
+from enum import Enum, unique
+import argparse
+import numpy as np
+import tensorflow as tf
+from keras.backend import set_session
+from keras.layers import Dense
+from keras.models import Sequential
+
+
+@unique
+class C4Team(Enum):
+    RED = 1
+    BLACK = 2
+
+
+@unique
+class C4SlotState(Enum):
+    EMPTY = 0
+    RED = 1
+    BLACK = 2
+
+
+class C4TeamPerspectiveSlotState(Enum):
+    EMPTY = 0
+    SELF = 1
+    ENEMY = 2
+
+
+@unique
+class C4Move(Enum):
+    COLUMN1 = 0
+    COLUMN2 = 1
+    COLUMN3 = 2
+    COLUMN4 = 3
+    COLUMN5 = 4
+    COLUMN6 = 5
+    COLUMN7 = 6
+    COLUMN8 = 7
+
+
+@unique
+class C4ActionResult(Enum):
+    NONE = 0
+    INVALID = 1
+    VICTORY = 2
+    TIE = 3
+
+
+class ConnectFourGame(object):
+    NUM_STATES = 6 * 8 * 3
+
+    def __init__(self):
+        self.turn = None
+        self._state = None
+        self._red_states = None
+        self._red_labels = None
+        self._black_states = None
+        self._black_states = None
+        self.winner = None
+        self.reset()
+
+    def reset(self):
+        self.turn = 0
+        self.winner = None
+        self._state = np.zeros((6, 8))
+        self._red_states = []
+        self._red_labels = []
+        self._black_states = []
+        self._black_labels  = []
+
+    def _check_winner(self, row: int, column: int) -> C4ActionResult:
+
+        def check_in_a_row():
+            if spaces is None:
+                return False
+            in_a_row = 0
+            for slot in spaces:
+                if slot != team:
+                    break
+                in_a_row += 1
+            if in_a_row == 4:
+                return True
+            return False
+
+        team = self._state[row][column]
+
+        # Left
+        spaces = self._state[row][max(column - 3, 0):column + 1]
+        if check_in_a_row():
+            return C4ActionResult.VICTORY
+
+        # Right
+        spaces = self._state[row][column:min(column + 4, 8)]
+        if check_in_a_row():
+            return C4ActionResult.VICTORY
+
+        # Up
+        spaces = self._state[:, column][row:max(row + 4, 6)]
+        if check_in_a_row():
+            return C4ActionResult.VICTORY
+
+        # Down
+        spaces = self._state[:, column][max(row - 3, 0):row + 1]
+        if check_in_a_row():
+            return C4ActionResult.VICTORY
+
+        # Diagonal
+        spaces = None
+        try:
+            spaces = [self._state[row][column], self._state[row + 1][column + 1],
+                      self._state[row + 2][column + 2], self._state[row + 3][column + 3]]
+        except IndexError:
+            pass
+        finally:
+            if check_in_a_row():
+                return C4ActionResult.VICTORY
+
+        spaces = None
+        try:
+            spaces = [self._state[row][column], self._state[row + 1][column - 1],
+                      self._state[row + 2][column - 2], self._state[row + 3][column - 3]]
+        except IndexError:
+            pass
+        finally:
+            if check_in_a_row():
+                return C4ActionResult.VICTORY
+
+        spaces = None
+        try:
+            spaces = [self._state[row][column], self._state[row - 1][column + 1],
+                      self._state[row - 2][column + 2], self._state[row - 3][column + 3]]
+        except IndexError:
+            pass
+        finally:
+            if check_in_a_row():
+                return C4ActionResult.VICTORY
+
+        spaces = None
+        try:
+            spaces = [self._state[row][column], self._state[row - 1][column - 1],
+                      self._state[row - 2][column - 2], self._state[row - 3][column - 3]]
+        except IndexError:
+            pass
+        finally:
+            if check_in_a_row():
+                return C4ActionResult.VICTORY
+
+        return C4ActionResult.NONE
+
+    def _apply_action(self, row: int, column: int, team: C4Team) -> C4ActionResult:
+
+        if team == C4Team.RED:
+            self._red_states.append(self.state(team))
+            self._red_labels.append(C4Move(column).value)
+        elif team == C4Team.BLACK:
+            self._black_states.append(self.state(team))
+            self._black_labels.append(C4Move(column).value)
+
+        self._state[row][column] = team.value
+        self.turn += 1
+        return self._check_winner(row, column)
+
+    def action(self, move: C4Move, team: C4Team) -> C4ActionResult:
+
+        column = move.value
+
+        # Put piece in first available row
+        for row in reversed(range(0, 6)):
+            if self._state[row][column] == C4SlotState.EMPTY.value:
+                if self._apply_action(row, column, team) == C4ActionResult.VICTORY:
+                    self.winner = team
+                    return C4ActionResult.VICTORY
+                return C4ActionResult.NONE
+
+        if np.sum(self.valid_moves()) == 0:
+            return C4ActionResult.TIE
+        return C4ActionResult.INVALID
+
+    def valid_moves(self) -> np.ndarray:
+        valid_moves = []
+        for column in range(0, 8):
+            valid = False
+            for row in reversed(range(0, 6)):
+                if self._state[row][column] == C4SlotState.EMPTY.value:
+                    valid = True
+                    break
+            if valid:
+                valid_moves.append(1)
+            else:
+                valid_moves.append(0)
+
+        return np.array(valid_moves)
+
+    def state(self, perspective: C4Team) -> np.ndarray:
+
+        state = self._state.copy()
+
+        if perspective == C4Team.BLACK:
+            np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.ENEMY.value])
+        elif perspective == C4Team.RED:
+            np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.ENEMY.value])
+
+        def one_hot_list(idx_list: np.ndarray, size: int):
+            ret_list = []
+            for idx, item in enumerate(idx_list):
+                ret = [0] * size
+                ret[int(item)] = 1
+                ret_list.extend(ret)
+            return ret_list
+
+        return np.array(one_hot_list(state.reshape(6 * 8), len(C4SlotState)))
+
+    def display(self) -> str:
+
+        output = "(1)(2)(3)(4)(5)(6)(7)(8)\n"
+        for row in self._state:
+            for slot in row:
+                if slot == C4SlotState.EMPTY.value:
+                    output += "( )"
+                elif slot == C4SlotState.BLACK.value:
+                    output += "(Y)"
+                elif slot == C4SlotState.RED.value:
+                    output += "(R)"
+            output += "\n"
+        return output
+
+    def current_turn(self):
+        if self.turn % 2 == 0:
+            return C4Team.RED
+        else:
+            return C4Team.BLACK
+
+    def training_data(self):
+        if self.winner is None:
+            return None, None
+
+        if self.winner == C4Team.RED:
+            return np.array(self._red_states), np.array(self._red_labels)
+        elif self.winner == C4Team.BLACK:
+            return np.array(self._black_states), np.array(self._black_labels)
+
+
+class ConnectFourModel(object):
+    def __init__(self, use_gpu=True):
+        model = Sequential()
+        model.add(Dense(ConnectFourGame.NUM_STATES, input_dim=ConnectFourGame.NUM_STATES, activation='relu'))
+        model.add(Dense(len(C4Move), activation='softmax'))
+        model.summary()
+        model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
+        self._model = model
+
+        if use_gpu:
+            config = tf.ConfigProto()
+            config.gpu_options.allow_growth = True
+            set_session(tf.Session(config=config))
+
+    # Data is the game state, labels are the action taken
+    def train(self, data, labels, reward=1):
+        self._model.fit(data, labels, batch_size=1, verbose=0, epochs=reward)
+
+    # Valid moves is a map of valid moves, ie [1, 1, 1, 0, 0, 1, 0, 1]
+    def predict(self, state, valid_moves: np.ndarray) -> C4Move:
+        predictions = self._model.predict(np.array([state]))[0]
+
+        # We only want valid moves
+        predictions = predictions * valid_moves
+
+        # Re-normalize
+        sigma = np.sum(predictions)
+        predictions = predictions / sigma
+
+        return C4Move(np.random.choice([i for i in range(0, 8)], p=predictions))
+
+    def save(self, path='weights.h5'):
+        self._model.save_weights(filepath=path)
+
+    def load(self, path='weights.h5'):
+        self._model.load_weights(filepath=path)
+
+
+def human_vs_human():
+    c4 = ConnectFourGame()
+
+    while True:
+        print(c4.display())
+
+        current_turn = c4.current_turn()
+        move = input("Move(%s): " % current_turn)
+        if move == 'q':
+            return
+        move = int(move) - 1
+        result = c4.action(C4Move(move), current_turn)
+        print("Result: %s" % result)
+        if result == C4ActionResult.VICTORY:
+            c4.reset()
+        elif result == C4ActionResult.TIE:
+            c4.reset()
+
+
+def human_vs_ai(weight_file):
+    c4 = ConnectFourGame()
+    c4ai = ConnectFourModel()
+    try:
+        c4ai.load(weight_file)
+    except OSError:
+        pass
+    print(c4.display())
+
+    while True:
+
+        current_team = c4.current_turn()
+        valid_moves = c4.valid_moves()
+
+        if current_team == C4Team.RED:
+            move = input("Move(%s): " % current_team)
+            if move == 'q':
+                return
+            move = int(move) - 1
+            result = c4.action(C4Move(move), current_team)
+        elif current_team == C4Team.BLACK:
+            state = c4.state(current_team)
+            move = c4ai.predict(state, valid_moves=valid_moves)
+            result = c4.action(move, current_team)
+
+        print(c4.display())
+
+        print("Result: %s" % result)
+        if result == C4ActionResult.VICTORY:
+            c4.reset()
+        elif result == C4ActionResult.TIE:
+            c4.reset()
+
+
+def ai_vs_ai(weight_file):
+    game_no = 0
+    red_wins = 0
+    black_wins = 0
+
+    c4 = ConnectFourGame()
+    c4ai = ConnectFourModel()
+    try:
+        c4ai.load(weight_file)
+    except OSError:
+        pass
+
+    while True:
+        current_team = c4.current_turn()
+        state = c4.state(current_team)
+
+        valid_moves = c4.valid_moves()
+        if np.sum(valid_moves) == 0:
+            print("Tie!")
+
+            # Reset
+            c4.reset()
+            continue
+
+        move = c4ai.predict(state, valid_moves=valid_moves)
+        result = c4.action(move, current_team)
+        if result == C4ActionResult.VICTORY:
+            # Update stats
+            if current_team == C4Team.RED:
+                print("Red Wins!")
+                red_wins += 1
+            elif current_team == C4Team.BLACK:
+                print("Black Wins!")
+                black_wins += 1
+
+            print("Red: %d Black %d" % (red_wins, black_wins))
+            if red_wins > black_wins:
+                print("Red is winning!")
+            elif black_wins > red_wins:
+                print("Black is winning!")
+            else:
+                print("Teams are tied!")
+
+            # Train
+            data, labels = c4.training_data()
+            c4ai.train(data, labels)
+
+            # Save Weights every 1000 games
+            if game_no % 1000 == 0:
+                c4ai.save('weights_' + str(game_no) + '.h5')
+
+            game_no += 1
+
+            # Reset
+            c4.reset()
+
+
+if __name__ == '__main__':
+    np.seterr(all='raise')
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('weight_file')
+    args = parser.parse_args()
+
+    #human_vs_human()
+    ai_vs_ai(args.weight_file)
+    #human_vs_ai(args.weight_file)
