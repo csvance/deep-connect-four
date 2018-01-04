@@ -73,68 +73,80 @@ class ConnectFourGame(object):
 
     def _check_winner(self, row: int, column: int) -> C4ActionResult:
 
-        def diag_bounds_check(y_sign, x_sign):
-            for i in range(0, 4):
-                if row + y_sign * i < 0 or row + y_sign * i > 5:
-                    return False
-                if column + x_sign * i < 0 or column + x_sign * i > 5:
-                    return False
-            return True
-
-        def check_in_a_row():
-            if spaces is None:
-                return False
-            in_a_row = 0
-            for slot in spaces:
-                if slot != team:
-                    break
-                in_a_row += 1
-            if in_a_row == 4:
-                return True
-            return False
-
         team = self._state[row][column]
 
-        # Left
-        spaces = self._state[row][max(column - 3, 0):column + 1]
-        if check_in_a_row():
-            return C4ActionResult.VICTORY
+        # # Left / Right
+        in_a_row = 0
+        for item in self._state[row]:
+            if item == team:
+                in_a_row += 1
+                if in_a_row == 4:
+                    return C4ActionResult.VICTORY
+            else:
+                in_a_row = 0
 
-        # Right
-        spaces = self._state[row][column:min(column + 4, 7)]
-        if check_in_a_row():
-            return C4ActionResult.VICTORY
-
-        # Up
-        spaces = self._state[:, column][row:max(row + 4, 6)]
-        if check_in_a_row():
-            return C4ActionResult.VICTORY
-
-        # Down
-        spaces = self._state[:, column][max(row - 3, 0):row + 1]
-        if check_in_a_row():
-            return C4ActionResult.VICTORY
+        # Up / Down
+        in_a_row = 0
+        for item in self._state[:, column]:
+            if item == team:
+                in_a_row += 1
+                if in_a_row == 4:
+                    return C4ActionResult.VICTORY
+            else:
+                in_a_row = 0
 
         # Diagonal
-        if diag_bounds_check(1, 1):
-            spaces = [self._state[row + i][column + i] for i in range(0, 4)]
-            if check_in_a_row():
-                return C4ActionResult.VICTORY
+        # Find border cell
+        r = row
+        c = column
+        while True:
+            if r < 0 or r >= 6 or c < 0 or c >= 7:
+                r += 1
+                c += 1
+                break
+            r -= 1
+            c -= 1
 
-        if diag_bounds_check(-1, 1):
-            spaces = [self._state[row - i][column + i] for i in range(0, 4)]
-            if check_in_a_row():
-                return C4ActionResult.VICTORY
+        in_a_row = 0
+        while True:
+            if r < 0 or r >= 6 or c < 0 or c >= 7:
+                break
+            item = self._state[r][c]
+            if item == team:
+                in_a_row += 1
+                if in_a_row == 4:
+                    return C4ActionResult.VICTORY
+            else:
+                in_a_row = 0
 
-        if diag_bounds_check(1, -1):
-            spaces = [self._state[row + i][column - i] for i in range(0, 4)]
-            if check_in_a_row():
-                return C4ActionResult.VICTORY
+            r += 1
+            c += 1
 
-        if diag_bounds_check(-1, -1):
-            spaces = [self._state[row - i][column - i] for i in range(0, 4)]
-            if check_in_a_row():
-                return C4ActionResult.VICTORY
+        # Find border cell
+        r = row
+        c = column
+        while True:
+            if r < 0 or r >= 6 or c < 0 or c >= 7:
+                r -= 1
+                c += 1
+                break
+            r += 1
+            c -= 1
+
+        in_a_row = 0
+        while True:
+            if r < 0 or r >= 6 or c < 0 or c >= 7:
+                break
+            item = self._state[r][c]
+            if item == team:
+                in_a_row += 1
+                if in_a_row == 4:
+                    return C4ActionResult.VICTORY
+            else:
+                in_a_row = 0
+
+            r -= 1
+            c += 1
 
         return C4ActionResult.NONE
 
@@ -235,7 +247,7 @@ class ConnectFourGame(object):
 
 
 class ConnectFourModel(object):
-    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.999, epsilon_min=0.01):
+    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.995, epsilon_min=0.01):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -439,7 +451,7 @@ if __name__ == '__main__':
     parser.add_argument('mode')
     parser.add_argument('--weights-file')
     parser.add_argument('--epsilon', type=float, default=0.01)
-    parser.add_argument('--epsilon-decay', type=float, default=0.999)
+    parser.add_argument('--epsilon-decay', type=float, default=0.995)
     parser.add_argument('--epsilon-min', type=float, default=0.01)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
