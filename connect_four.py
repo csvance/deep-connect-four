@@ -402,11 +402,6 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
             c4.reset()
             continue
 
-        epsilon_weight = 1.
-        if current_team == C4Team.RED:
-            epsilon_weight += red_loss_streak / 10.
-        elif current_team == C4Team.BLACK:
-            epsilon_weight += black_loss_streak / 10.
         move = c4ai.predict(state, valid_moves=valid_moves, epsilon_weight=epsilon_weight)
 
         result = c4.action(move, current_team)
@@ -415,13 +410,15 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
             if current_team == C4Team.RED:
                 red_wins += 1
                 red_win_streak += 1
-                red_loss_streak = 0
                 black_win_streak = 0
+                red_loss_streak = 0
+                black_loss_streak += 1
             elif current_team == C4Team.BLACK:
                 black_wins += 1
                 black_win_streak += 1
-                black_loss_streak = 0
                 red_win_streak = 0
+                black_loss_streak = 0
+                red_loss_streak += 1
 
             print("Red: %d Black %d Epsilon: %f" % (red_wins, black_wins, c4ai.epsilon))
             print(c4.display())
