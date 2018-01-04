@@ -429,7 +429,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode')
     parser.add_argument('--weights-file')
-    parser.add_argument('--epsilon', type=float, default=1.)
+    parser.add_argument('--epsilon', type=float, default=0.01)
     parser.add_argument('--epsilon-decay', type=float, default=0.999)
     parser.add_argument('--epsilon-min', type=float, default=0.01)
     parser.add_argument('--verbose', action='store_true')
