@@ -6,7 +6,7 @@ from enum import Enum, unique
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Embedding, Flatten
+from keras.layers import Dense, Flatten
 from keras.models import Sequential
 from keras.optimizers import Adam
 
@@ -73,6 +73,14 @@ class ConnectFourGame(object):
 
     def _check_winner(self, row: int, column: int) -> C4ActionResult:
 
+        def diag_bounds_check(y_sign, x_sign):
+            for i in range(0, 4):
+                if row + y_sign * i < 0 or row + y_sign * i > 5:
+                    return False
+                if column + x_sign * i < 0 or column + x_sign * i > 5:
+                    return False
+            return True
+
         def check_in_a_row():
             if spaces is None:
                 return False
@@ -108,43 +116,23 @@ class ConnectFourGame(object):
             return C4ActionResult.VICTORY
 
         # Diagonal
-        spaces = None
-        try:
-            spaces = [self._state[row][column], self._state[row + 1][column + 1],
-                      self._state[row + 2][column + 2], self._state[row + 3][column + 3]]
-        except IndexError:
-            pass
-        finally:
+        if diag_bounds_check(1, 1):
+            spaces = [self._state[row + i][column + i] for i in range(0, 4)]
             if check_in_a_row():
                 return C4ActionResult.VICTORY
 
-        spaces = None
-        try:
-            spaces = [self._state[row][column], self._state[row + 1][column - 1],
-                      self._state[row + 2][column - 2], self._state[row + 3][column - 3]]
-        except IndexError:
-            pass
-        finally:
+        if diag_bounds_check(-1, 1):
+            spaces = [self._state[row - i][column + i] for i in range(0, 4)]
             if check_in_a_row():
                 return C4ActionResult.VICTORY
 
-        spaces = None
-        try:
-            spaces = [self._state[row][column], self._state[row - 1][column + 1],
-                      self._state[row - 2][column + 2], self._state[row - 3][column + 3]]
-        except IndexError:
-            pass
-        finally:
+        if diag_bounds_check(1, -1):
+            spaces = [self._state[row + i][column - i] for i in range(0, 4)]
             if check_in_a_row():
                 return C4ActionResult.VICTORY
 
-        spaces = None
-        try:
-            spaces = [self._state[row][column], self._state[row - 1][column - 1],
-                      self._state[row - 2][column - 2], self._state[row - 3][column - 3]]
-        except IndexError:
-            pass
-        finally:
+        if diag_bounds_check(-1, -1):
+            spaces = [self._state[row - i][column - i] for i in range(0, 4)]
             if check_in_a_row():
                 return C4ActionResult.VICTORY
 
@@ -206,7 +194,7 @@ class ConnectFourGame(object):
             np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.ENEMY.value])
 
         def one_hot(idx: int, size: int):
-            ret = [0.]*size
+            ret = [0.] * size
             ret[int(idx)] = 1.
             return ret
 
@@ -216,7 +204,6 @@ class ConnectFourGame(object):
                 one_hot_rows[row_idx][column_idx] = one_hot(column, 3)
 
         return one_hot_rows
-
 
     def display(self) -> str:
 
@@ -230,7 +217,7 @@ class ConnectFourGame(object):
                 elif slot == C4SlotState.RED.value:
                     output += "(R)"
             output += "\n"
-        return output[:len(output)-1]
+        return output[:len(output) - 1]
 
     def current_turn(self):
         if self.turn % 2 == 0:
@@ -259,8 +246,8 @@ class ConnectFourModel(object):
         print("epsilon_decay: %f" % self.epsilon_decay)
 
         model = Sequential()
-        model.add(Dense(ConnectFourGame.STATE_DIM*8, input_shape=(6, 7, 3), activation='relu'))
-        model.add(Dense(ConnectFourGame.STATE_DIM*8, activation='relu'))
+        model.add(Dense(ConnectFourGame.STATE_DIM * 8, input_shape=(6, 7, 3), activation='relu'))
+        model.add(Dense(ConnectFourGame.STATE_DIM * 8, activation='relu'))
         model.add(Flatten())
         model.add(Dense(len(C4Move), activation='softmax'))
         model.compile(optimizer=Adam(lr=0.001), loss='sparse_categorical_crossentropy')
@@ -277,7 +264,7 @@ class ConnectFourModel(object):
         self._model.fit(data, labels, batch_size=1, verbose=0, epochs=reward)
 
     def predict(self, state, valid_moves: np.ndarray, epsilon_weight=1.0, argmax=False) -> C4Move:
-        if np.random.rand() <= epsilon_weight*self.epsilon:
+        if np.random.rand() <= epsilon_weight * self.epsilon:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
                 if valid_moves[idx] == 1:
@@ -360,7 +347,7 @@ def human_vs_ai(weight_file):
             result = c4.action(C4Move(move), current_team)
         elif current_team == C4Team.BLACK:
             state = c4.state(current_team)
-            move = c4ai.predict(state, valid_moves=valid_moves)
+            move = c4ai.predict(state, valid_moves=valid_moves, argmax=True)
             result = c4.action(move, current_team)
 
         print(c4.display())
