@@ -244,7 +244,9 @@ class ConnectFourGame(object):
 
 
 class ConnectFourModel(object):
-    def __init__(self, use_gpu=True):
+    def __init__(self, use_gpu=True, epsilon: float=1.0):
+
+        self.epsilon = epsilon
         model = Sequential()
         model.add(Dense(ConnectFourGame.NUM_STATES, input_dim=ConnectFourGame.NUM_STATES, activation='relu'))
         model.add(Dense(ConnectFourGame.NUM_STATES, activation='relu'))
@@ -264,6 +266,10 @@ class ConnectFourModel(object):
 
     # Valid moves is a map of valid moves, ie [1, 1, 1, 0, 0, 1, 0, 1]
     def predict(self, state, valid_moves: np.ndarray) -> C4Move:
+        if np.random.rand() <= self.epsilon:
+            return np.random.choice([C4Move.COLUMN1, C4Move.COLUMN2, C4Move.COLUMN3, C4Move.COLUMN4,
+                                     C4Move.COLUMN5, C4Move.COLUMN6, C4Move.COLUMN7, C4Move.COLUMN8])
+
         predictions = self._model.predict(np.array([state]))[0]
 
         # We only want valid moves
@@ -335,15 +341,16 @@ def human_vs_ai(weight_file):
             c4.reset()
 
 
-def ai_vs_ai(weight_file):
+def ai_vs_ai(weight_file, epsilon):
     game_no = 0
     red_wins = 0
     black_wins = 0
 
     c4 = ConnectFourGame()
-    c4ai = ConnectFourModel()
+    c4ai = ConnectFourModel(epsilon=epsilon)
     try:
-        c4ai.load(weight_file)
+        if weight_file is not None:
+            c4ai.load(weight_file)
     except OSError:
         pass
 
@@ -397,13 +404,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('mode')
-    parser.add_argument('--weight-file')
+    parser.add_argument('--weights-file')
+    parser.add_argument('--epsilon', type=float)
     args = parser.parse_args()
 
     if args.mode == 'hvh':
         human_vs_human()
     elif args.mode == 'ava':
-        ai_vs_ai(args.weights_file)
+        ai_vs_ai(args.weights_file, args.epsilon)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     else:
