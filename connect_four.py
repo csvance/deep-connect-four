@@ -1,13 +1,14 @@
-from enum import Enum, unique
 import argparse
+import datetime
+import os
+from enum import Enum, unique
+
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
 from keras.layers import Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
-import datetime
-import os
 
 
 @unique
@@ -69,7 +70,7 @@ class ConnectFourGame(object):
         self._red_states = []
         self._red_labels = []
         self._black_states = []
-        self._black_labels  = []
+        self._black_labels = []
 
     def _check_winner(self, row: int, column: int) -> C4ActionResult:
 
@@ -245,8 +246,16 @@ class ConnectFourGame(object):
 
 
 class ConnectFourModel(object):
-    def __init__(self, use_gpu=True, epsilon: float=1.0):
+    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.99999, epsilon_min=0.01):
         self.epsilon = epsilon
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
+
+        print("Initializing ConnectFourModel")
+        print("epsilon: %f" % self.epsilon)
+        print("epsilon_min: %f" % self.epsilon_min)
+        print("epsilon_decay: %f" % self.epsilon_decay)
+
         model = Sequential()
         model.add(Dense(ConnectFourGame.NUM_STATES, input_dim=ConnectFourGame.NUM_STATES, activation='relu'))
         model.add(Dense(len(C4Move), activation='softmax'))
@@ -290,9 +299,9 @@ class ConnectFourModel(object):
             return np.random.choice(potential_moves)
         return C4Move(np.argmax(predictions))
 
-    def decay(self, epsilon_min=0.01, epsilon_decay=0.999):
-        self.epsilon = max(epsilon_min, self.epsilon*epsilon_decay)
-        if self.epsilon > epsilon_min:
+    def decay(self):
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        if self.epsilon > self.epsilon_min:
             print("Epsilon: %f" % self.epsilon)
 
     def save(self, path='weights.h5'):
@@ -356,18 +365,17 @@ def human_vs_ai(weight_file):
             c4.reset()
 
 
-def ai_vs_ai(weight_file, epsilon):
-
+def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float):
     time_string = datetime.datetime.now().strftime('%m-%d-%y-%H-%M-%S')
     game_no = 0
     red_wins = 0
     black_wins = 0
 
     c4 = ConnectFourGame()
-    c4ai = ConnectFourModel(epsilon=epsilon)
+    c4ai = ConnectFourModel(epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min)
     try:
-        if weight_file is not None:
-            c4ai.load(weight_file)
+        if weights_file is not None:
+            c4ai.load(weights_file)
     except OSError:
         print("Warning: could not load weights file!")
         pass
@@ -418,7 +426,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode')
     parser.add_argument('--weights-file')
-    parser.add_argument('--epsilon', type=float, default=0.)
+    parser.add_argument('--epsilon', type=float, default=1.)
+    parser.add_argument('--epsilon-decay', type=float, default=0.99999)
+    parser.add_argument('--epsilon-min', type=float, default=0.01)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
@@ -428,7 +438,8 @@ if __name__ == '__main__':
     if args.mode == 'hvh':
         human_vs_human()
     elif args.mode == 'ava':
-        ai_vs_ai(args.weights_file, args.epsilon)
+        ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_decay=args.epsilon_decay,
+                 epsilon_min=args.epsilon_min)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     else:
