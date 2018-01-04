@@ -6,7 +6,9 @@ from keras.backend import set_session
 from keras.layers import Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
-import traceback
+import datetime
+import os
+
 
 @unique
 class C4Team(Enum):
@@ -236,8 +238,7 @@ class ConnectFourGame(object):
     def training_data(self):
         if self.winner is None:
             return None, None
-
-        if self.winner == C4Team.RED:
+        elif self.winner == C4Team.RED:
             return np.array(self._red_states), np.array(self._red_labels)
         elif self.winner == C4Team.BLACK:
             return np.array(self._black_states), np.array(self._black_labels)
@@ -326,6 +327,7 @@ def human_vs_ai(weight_file):
     try:
         c4ai.load(weight_file)
     except OSError:
+        print("Warning: could not load weights file!")
         pass
     print(c4.display())
 
@@ -355,6 +357,8 @@ def human_vs_ai(weight_file):
 
 
 def ai_vs_ai(weight_file, epsilon):
+
+    time_string = datetime.datetime.now().strftime('%m-%d-%y-%H-%M-%S')
     game_no = 0
     red_wins = 0
     black_wins = 0
@@ -365,6 +369,7 @@ def ai_vs_ai(weight_file, epsilon):
         if weight_file is not None:
             c4ai.load(weight_file)
     except OSError:
+        print("Warning: could not load weights file!")
         pass
 
     while True:
@@ -396,7 +401,7 @@ def ai_vs_ai(weight_file, epsilon):
 
             # Save Weights every 1000 games
             if game_no % 1000 == 0:
-                c4ai.save('weights_' + str(game_no) + '.h5')
+                c4ai.save('weights_' + str(game_no) + '_' + time_string + '.h5')
 
             game_no += 1
 
@@ -414,7 +419,11 @@ if __name__ == '__main__':
     parser.add_argument('mode')
     parser.add_argument('--weights-file')
     parser.add_argument('--epsilon', type=float, default=0.)
+    parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
+
+    if not args.verbose:
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     if args.mode == 'hvh':
         human_vs_human()
