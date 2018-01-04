@@ -230,7 +230,7 @@ class ConnectFourGame(object):
                 elif slot == C4SlotState.RED.value:
                     output += "(R)"
             output += "\n"
-        return output
+        return output[:len(output)-1]
 
     def current_turn(self):
         if self.turn % 2 == 0:
@@ -276,7 +276,7 @@ class ConnectFourModel(object):
     def train(self, data, labels, reward=1):
         self._model.fit(data, labels, batch_size=1, verbose=0, epochs=reward)
 
-    def predict(self, state, valid_moves: np.ndarray, epsilon_weight=1.0) -> C4Move:
+    def predict(self, state, valid_moves: np.ndarray, epsilon_weight=1.0, argmax=False) -> C4Move:
         if np.random.rand() <= epsilon_weight*self.epsilon:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
@@ -301,7 +301,11 @@ class ConnectFourModel(object):
                 if valid_moves[idx] == 1:
                     potential_moves.append(C4Move(idx))
             return np.random.choice(potential_moves)
-        return C4Move(np.argmax(predictions))
+
+        if argmax:
+            return C4Move(np.argmax(predictions))
+        else:
+            return C4Move(np.random.choice([i for i in range(0, 7)], p=predictions))
 
     def decay(self):
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
@@ -405,7 +409,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
         elif current_team == C4Team.BLACK:
             epsilon_weight += black_loss_streak / 10.
         move = c4ai.predict(state, valid_moves=valid_moves, epsilon_weight=epsilon_weight)
-        
+
         result = c4.action(move, current_team)
         if result == C4ActionResult.VICTORY:
             # Update stats
@@ -421,6 +425,8 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 red_win_streak = 0
 
             print("Red: %d Black %d Epsilon: %f" % (red_wins, black_wins, c4ai.epsilon))
+            print(c4.display())
+            print("")
 
             # Train
             data, labels = c4.training_data()
