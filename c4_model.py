@@ -247,7 +247,7 @@ class C4Model(object):
 
     # Data is the game state, labels are the action taken
     def train(self, data, labels, reward=1):
-        return self._model.fit(data, labels, batch_size=1, verbose=0, epochs=reward)
+        return self._model.fit(data, labels, batch_size=1, verbose=1, epochs=reward)
 
     def predict(self, state, valid_moves: np.ndarray, epsilon_weight=1.0, argmax=False) -> C4Move:
         if np.random.rand() <= epsilon_weight * self.epsilon:

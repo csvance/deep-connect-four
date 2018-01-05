@@ -2,7 +2,7 @@ import argparse
 import datetime
 import os
 import numpy as np
-
+from multiprocessing import Queue, Pool
 from c4_game import C4Game, C4Move, C4ActionResult, C4Team
 from c4_model import C4Model, C4FeatureAnalyzer
 
@@ -49,8 +49,9 @@ def human_vs_ai(weight_file):
             move = int(move) - 1
             result = c4.action(C4Move(move), current_team)
         elif current_team == C4Team.BLACK:
-            state = c4.state(current_team)
-            move = c4ai.predict(state, valid_moves=valid_moves, argmax=True)
+            state = C4FeatureAnalyzer(c4.state(current_team)).analyze()
+            move = c4ai.predict([np.array([state[0]]), np.array([state[1]])], valid_moves=valid_moves,
+                                argmax=True)
             result = c4.action(move, current_team)
 
         print(c4.display())
@@ -62,7 +63,7 @@ def human_vs_ai(weight_file):
             c4.reset()
 
 
-def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float):
+def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float, games: int):
     time_string = datetime.datetime.now().strftime('%m-%d-%y-%H-%M-%S')
     game_no = 0
     red_wins = 0
@@ -71,6 +72,20 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
     black_wins = 0
     black_win_streak = 0
     black_loss_streak = 0
+
+    winning_game_data = []
+    winning_game_labels = []
+
+    work_queue = Queue()
+    done_queue = Queue()
+
+    def worker_main(w_queue, d_queue):
+        while True:
+            state, label = w_queue.get()
+            data = C4FeatureAnalyzer(state).analyze()
+            d_queue.put((data, label))
+
+    worker_pool = Pool(8, worker_main, (work_queue, done_queue))
 
     c4 = C4Game()
     c4ai = C4Model(epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min)
@@ -92,8 +107,14 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
             c4.reset()
             continue
 
+        if current_team == C4Team.RED:
+            loss_streak = red_loss_streak
+        elif current_team == C4Team.BLACK:
+            loss_streak = black_loss_streak
+
         state = C4FeatureAnalyzer(c4.state(current_team)).analyze()
-        move = c4ai.predict([np.array([state[0]]), np.array([state[1]])], valid_moves=valid_moves, argmax=True)
+        move = c4ai.predict([np.array([state[0]]), np.array([state[1]])], valid_moves=valid_moves,
+                            argmax=True, epsilon_weight=float(min(loss_streak+1, 10.)))
 
         result = c4.action(move, current_team)
         if result == C4ActionResult.VICTORY:
@@ -111,25 +132,31 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 black_loss_streak = 0
                 red_loss_streak += 1
 
-
-
             # Train
             data, labels = c4.training_data()
+            winning_game_data.extend(data)
+            winning_game_labels.extend(labels)
 
-            X = [[], []]
-            for state in data:
-                results = C4FeatureAnalyzer(state).analyze()
-                X[0].append(results[0])
-                X[1].append(results[1])
-            history = c4ai.train([np.array(X[0]), np.array(X[1])], labels)
-
-            print("Red: %d Black %d Epsilon: %f Loss: %f" % (red_wins, black_wins, c4ai.epsilon, history.history['loss'][0]))
+            print("Red: %d Black %d Epsilon: %f" % (red_wins, black_wins, c4ai.epsilon))
             print(c4.display())
             print("")
 
-            # Save Weights every 1000 games
-            if game_no % 1000 == 0:
-                c4ai.save('weights_' + str(game_no) + '_' + time_string + '.h5')
+            if game_no != 0 and game_no % games == 0:
+                X = [[], []]
+                Y = []
+                work = 0
+                for state_idx, state in enumerate(winning_game_data):
+                    work_queue.put((state, winning_game_labels[state_idx]))
+                    work += 1
+                for i in range(0, work):
+                    data, label = done_queue.get()
+                    X[0].append(data[0])
+                    X[1].append(data[1])
+                    Y.append(label)
+                c4ai.train([np.array(X[0]), np.array(X[1])], np.array(Y))
+                c4ai.save('weights_' + time_string + '.h5')
+                winning_game_labels = []
+                winning_game_data = []
 
             game_no += 1
 
@@ -149,6 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon', type=float, default=0.01)
     parser.add_argument('--epsilon-decay', type=float, default=0.995)
     parser.add_argument('--epsilon-min', type=float, default=0.01)
+    parser.add_argument('--training-games', type=int, default=100)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
@@ -159,7 +187,7 @@ if __name__ == '__main__':
         human_vs_human()
     elif args.mode == 'ava':
         ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_decay=args.epsilon_decay,
-                 epsilon_min=args.epsilon_min)
+                 epsilon_min=args.epsilon_min, games=args.training_games)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     else:

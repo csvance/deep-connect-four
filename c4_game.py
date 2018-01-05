@@ -225,6 +225,6 @@ class C4Game(object):
         if self.winner is None:
             return None
         elif self.winner == C4Team.RED:
-            return self._red_states, np.array(self._red_labels)
+            return self._red_states, self._red_labels
         elif self.winner == C4Team.BLACK:
-            return self._black_states, np.array(self._black_labels)
+            return self._black_states, self._black_labels
