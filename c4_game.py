@@ -193,13 +193,13 @@ class C4Game(object):
 
         # TODO: measure and optimize this
         if perspective == C4Team.BLACK:
-            np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.SELF.value+4])
+            np.place(state, state == C4Team.BLACK.value, [99])
             np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.ENEMY.value])
-            np.place(state, state == C4TeamPerspectiveSlotState.SELF.value+4, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == 99, [C4TeamPerspectiveSlotState.SELF.value])
         elif perspective == C4Team.RED:
-            np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.SELF.value+4])
+            np.place(state, state == C4Team.RED.value, [99])
             np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.ENEMY.value])
-            np.place(state, state == C4TeamPerspectiveSlotState.SELF.value+4, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == 99, [C4TeamPerspectiveSlotState.SELF.value])
 
         return state
 

@@ -114,7 +114,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
 
         state = C4FeatureAnalyzer(c4.state(current_team)).analyze()
         move = c4ai.predict([np.array([state[0]]), np.array([state[1]])], valid_moves=valid_moves,
-                            argmax=True, epsilon_weight=float(min(loss_streak+1, 10.)))
+                            argmax=True)
 
         result = c4.action(move, current_team)
         if result == C4ActionResult.VICTORY:

@@ -26,7 +26,6 @@ class C4FeatureAnalyzer(object):
         global_column_count = np.sum(normalized_column_counts) / 7.
 
         result = [global_column_count]
-        result.extend(normalized_column_counts)
         return result
 
     def column_analysis(self) -> List:
@@ -47,16 +46,23 @@ class C4FeatureAnalyzer(object):
 
         # Can this create a viable connection?
         good_front = 0
-        for idx in range(insertion_idx+1, len(vector)):
-            if vector[idx] == C4TeamPerspectiveSlotState.SELF.value or vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
+        connect_self = 0
+        for idx in range(min(len(vector), insertion_idx+1), min(len(vector), insertion_idx+4)):
+            if vector[idx] == C4TeamPerspectiveSlotState.SELF.value:
+                good_front += 1
+                connect_self += 1
+            elif vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
                 good_front += 1
             else:
                 break
 
         # Now from the back
         good_back = 0
-        for idx in reversed(range(0, insertion_idx)):
-            if vector[idx] == C4TeamPerspectiveSlotState.SELF.value or vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
+        for idx in reversed(range(max(0, insertion_idx-3), insertion_idx)):
+            if vector[idx] == C4TeamPerspectiveSlotState.SELF.value:
+                good_back += 1
+                connect_self += 1
+            elif vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
                 good_back += 1
             else:
                 break
@@ -67,18 +73,24 @@ class C4FeatureAnalyzer(object):
             potential_connection = 0.
 
         block_front = 0
-
+        block_enemy = 0
         # Will this block a viable connection for the enemy?
-        for idx in range(insertion_idx+1, len(vector)):
-            if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value or vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
+        for idx in range(min(len(vector), insertion_idx+1), min(len(vector), insertion_idx+4)):
+            if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value:
+                block_front += 1
+                block_enemy += 1
+            elif vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
                 block_front += 1
             else:
                 break
 
         # Now from the back
         block_back = 0
-        for idx in reversed(range(0, insertion_idx)):
-            if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value or vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
+        for idx in reversed(range(max(0, insertion_idx-3), insertion_idx)):
+            if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value:
+                block_back += 1
+                block_enemy += 1
+            elif vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
                 block_back += 1
             else:
                 break
@@ -88,7 +100,7 @@ class C4FeatureAnalyzer(object):
         else:
             potential_block = 0
 
-        return [potential_connection, potential_block]
+        return [potential_connection, potential_block, connect_self / 6., block_enemy / 6.]
 
     def analyze_move(self, column: int) -> List:
 
@@ -99,7 +111,7 @@ class C4FeatureAnalyzer(object):
                 last_empty = row
 
         if last_empty is None:
-            return [[0., 0.], [0., 0.], [0., 0.], [0., 0.]]
+            return [0., 0., 0., 0.]
 
         # It is possible to make a move here, so lets analyze it
         row = last_empty
@@ -162,10 +174,23 @@ class C4FeatureAnalyzer(object):
 
         vectors.append((np.array(vector), insertion_idx))
 
-        features = []
+        connect_space_normalized = 0
+        block_space_normalized = 0
+        connect_self_normalized = 0
+        block_enemy_normalized = 0
         for v in vectors:
-            features.append(self.analyze_vector(v))
-        return features
+            f = self.analyze_vector(v)
+            connect_space_normalized += f[0]
+            block_space_normalized += f[1]
+            connect_self_normalized += f[2]
+            block_enemy_normalized += f[3]
+
+        connect_space_normalized /= 4.
+        block_space_normalized /= 4.
+        connect_self_normalized /= 4.
+        block_enemy_normalized /= 4.
+
+        return [connect_space_normalized, block_space_normalized, connect_self_normalized, block_enemy_normalized]
 
 
 class C4Model(object):
@@ -174,15 +199,15 @@ class C4Model(object):
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
 
-        global_input = Input(shape=(8,), name='globals')
-        g = Dense(8, activation='relu')(global_input)
+        global_input = Input(shape=(1,), name='globals')
+        g = Dense(1, activation='relu')(global_input)
 
-        move_input = Input(shape=(7, 4, 2), name='moves')
-        m = Dense(64, activation='relu')(move_input)
+        move_input = Input(shape=(7, 4), name='moves')
+        m = Dense(28, activation='relu')(move_input)
         m = Flatten()(m)
 
         c = concatenate([g, m])
-        c = Dense(32, activation='relu')(c)
+        c = Dense(16, activation='relu')(c)
 
         output = Dense(len(C4Move), activation='softmax')(c)
 
@@ -200,8 +225,8 @@ class C4Model(object):
     def train(self, data, labels, reward=1):
         return self._model.fit(data, labels, batch_size=1, verbose=1, epochs=reward)
 
-    def predict(self, state, valid_moves: np.ndarray, epsilon_weight=1.0, argmax=False) -> C4Move:
-        if np.random.rand() <= epsilon_weight * self.epsilon:
+    def predict(self, state, valid_moves: np.ndarray, argmax=False) -> C4Move:
+        if np.random.rand() <= self.epsilon:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
                 if valid_moves[idx] == 1:
