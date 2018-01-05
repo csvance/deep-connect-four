@@ -132,7 +132,6 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 black_loss_streak = 0
                 red_loss_streak += 1
 
-            # Train
             data, labels = c4.training_data()
             winning_game_data.extend(data)
             winning_game_labels.extend(labels)

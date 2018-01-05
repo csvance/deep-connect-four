@@ -12,24 +12,24 @@ class C4FeatureAnalyzer(object):
     def __init__(self, state: np.ndarray):
         self.state = state
 
-    def analyze(self) -> Tuple[np.ndarray,np.ndarray]:
+    def analyze(self) -> Tuple[np.ndarray, np.ndarray]:
         moves = []
         for column in range(0, 7):
             moves.append(self.analyze_move(column))
 
-        result = self.global_analysis()
-        return np.array(result), np.array(moves)
+        global_result = self.global_analysis()
+        return np.array(global_result), np.array(moves)
 
     def global_analysis(self):
 
-        normalized_column_counts = self.current_column_analysis()
+        normalized_column_counts = self.column_analysis()
         global_column_count = np.sum(normalized_column_counts) / 7.
 
         result = [global_column_count]
         result.extend(normalized_column_counts)
         return result
 
-    def current_column_analysis(self) -> List:
+    def column_analysis(self) -> List:
 
         # Fill ratio for individual columns
         column_slot_filled_ratios = []
@@ -40,122 +40,77 @@ class C4FeatureAnalyzer(object):
 
         return column_slot_filled_ratios
 
-    def analyze_move_pre_post(self, pre_row: np.ndarray, post_row: np.ndarray):
-        assert len(pre_row) == len(post_row)
+    def analyze_vector(self, v: Tuple[np.ndarray, int]):
 
-        def stats(empty, me, enemy):
-            def _stat(l):
-                _min = min(l) / 4.
-                _max = max(l) / 4.
-                _sum = sum(l) / len(pre_row)
-                _avg = _sum / len(l)
-                return [_min, _max, _sum, _avg]
+        vector = v[0]
+        insertion_idx = v[1]
 
-            return np.array([_stat(empty), _stat(me), _stat(enemy)])
+        # Can this create a viable connection?
+        good_front = 0
+        for idx in range(insertion_idx+1, len(vector)):
+            if vector[idx] == C4TeamPerspectiveSlotState.SELF.value or vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
+                good_front += 1
+            else:
+                break
 
-        def scan(row: np.ndarray):
+        # Now from the back
+        good_back = 0
+        for idx in reversed(range(0, insertion_idx)):
+            if vector[idx] == C4TeamPerspectiveSlotState.SELF.value or vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
+                good_back += 1
+            else:
+                break
 
-            self_in_a_rows = []
-            self_in_a_row = 0
+        if good_front + good_back + 1 >= 4:
+            potential_connection = 1.
+        else:
+            potential_connection = 0.
 
-            enemy_in_a_rows = []
-            enemy_in_a_row = 0
+        block_front = 0
 
-            empty_in_a_rows = []
-            empty_in_a_row = 0
+        # Will this block a viable connection for the enemy?
+        for idx in range(insertion_idx+1, len(vector)):
+            if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value or vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
+                block_front += 1
+            else:
+                break
 
-            for item in row:
-                if item == C4TeamPerspectiveSlotState.SELF.value:
+        # Now from the back
+        block_back = 0
+        for idx in reversed(range(0, insertion_idx)):
+            if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value or vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
+                block_back += 1
+            else:
+                break
 
-                    self_in_a_row += 1
+        if block_front + block_back + 1 >= 4:
+            potential_block = 1
+        else:
+            potential_block = 0
 
-                    if empty_in_a_row > 0:
-                        empty_in_a_rows.append(empty_in_a_row)
-                        empty_in_a_row = 0
-                    elif enemy_in_a_row > 0:
-                        enemy_in_a_rows.append(enemy_in_a_row)
-                        enemy_in_a_row = 0
+        return [potential_connection, potential_block]
 
-                elif item == C4TeamPerspectiveSlotState.ENEMY.value:
-                    enemy_in_a_row += 1
-
-                    if self_in_a_row > 0:
-                        self_in_a_rows.append(self_in_a_row)
-                        self_in_a_row = 0
-                    elif empty_in_a_row > 0:
-                        empty_in_a_rows.append(empty_in_a_row)
-                        empty_in_a_row = 0
-
-                elif item == C4TeamPerspectiveSlotState.EMPTY.value:
-                    empty_in_a_row += 1
-
-                    if self_in_a_row > 0:
-                        self_in_a_rows.append(self_in_a_row)
-                        self_in_a_row = 0
-                    elif enemy_in_a_row > 0:
-                        enemy_in_a_rows.append(enemy_in_a_row)
-                        enemy_in_a_row = 0
-
-            if empty_in_a_row:
-                empty_in_a_rows.append(empty_in_a_row)
-            if len(empty_in_a_rows) == 0:
-                empty_in_a_rows.append(0)
-
-            if self_in_a_row:
-                self_in_a_rows.append(self_in_a_row)
-            if len(self_in_a_rows) == 0:
-                self_in_a_rows.append(0)
-
-            if enemy_in_a_row:
-                enemy_in_a_rows.append(enemy_in_a_row)
-            if len(enemy_in_a_rows) == 0:
-                enemy_in_a_rows.append(0)
-
-            return empty_in_a_rows, self_in_a_rows, enemy_in_a_rows
-
-        pre_empty_in_a_rows, pre_self_in_a_rows, pre_enemy_in_a_rows = scan(pre_row)
-        pre_stats = stats(pre_empty_in_a_rows, pre_self_in_a_rows, pre_enemy_in_a_rows)
-
-        post_empty_in_a_rows, post_self_in_a_rows, post_enemy_in_a_rows = scan(post_row)
-        post_stats = stats(post_empty_in_a_rows, post_self_in_a_rows, post_enemy_in_a_rows)
-
-        return pre_stats, post_stats
-
-    def analyze_move(self, column: int) -> np.ndarray:
+    def analyze_move(self, column: int) -> List:
 
         # Find where the move would go
         last_empty = None
         for row in range(0, 6):
             if self.state[row][column] == C4TeamPerspectiveSlotState.EMPTY.value:
                 last_empty = row
-            else:
-                return np.zeros((4, 3, 4))
+
+        if last_empty is None:
+            return [[0., 0.], [0., 0.], [0., 0.], [0., 0.]]
 
         # It is possible to make a move here, so lets analyze it
         row = last_empty
 
+        vectors = []
+
         # Left / Right
-        pre_row = self.state[row]
-        post_row = pre_row.copy()
-        post_row[column] = C4TeamPerspectiveSlotState.SELF.value
-        pre_left_right_stats, post_left_right_stats = self.analyze_move_pre_post(pre_row, post_row)
-        left_right_stats = post_left_right_stats - pre_left_right_stats
+        vectors.append((self.state[row], column))
 
         # Up Down
-        pre_row = self.state[:, column]
-        post_row = pre_row.copy()
-        post_row[row] = C4TeamPerspectiveSlotState.SELF.value
-        pre_up_down_stats, post_up_down_stats = self.analyze_move_pre_post(pre_row, post_row)
-
-        up_down_stats = post_up_down_stats - pre_up_down_stats
-
-        # Look what the enemy might do playing ontop of us
-        if row <= 4:
-            enemy_row = post_row.copy()
-            enemy_row[row + 1] = C4TeamPerspectiveSlotState.ENEMY.value
-            _, enemy_up_down_stats = self.analyze_move_pre_post(post_row, enemy_row)
-
-            up_down_stats = (up_down_stats + (enemy_up_down_stats - post_up_down_stats)) / 2.
+        vectors.append((self.state[:, column], row))
 
         # Diagonal
         # Find border cell
@@ -169,22 +124,18 @@ class C4FeatureAnalyzer(object):
             r -= 1
             c -= 1
 
-        pre_row = []
-        post_row = []
+        vector = []
+        insertion_idx = None
         while True:
             if r < 0 or r >= 6 or c < 0 or c >= 7:
                 break
-            pre_row.append(self.state[r][c])
-            if c == column and r == row:
-                post_row.append(C4TeamPerspectiveSlotState.SELF.value)
-            else:
-                post_row.append(self.state[r][c])
-
+            vector.append(self.state[r][c])
+            if r == row and c == column:
+                insertion_idx = len(vector)
             r += 1
             c += 1
 
-        pre_diag_stats_pp, post_diag_stats_pp = self.analyze_move_pre_post(np.array(pre_row), np.array(post_row))
-        diag_stats_pp = post_diag_stats_pp - pre_diag_stats_pp
+        vectors.append((np.array(vector), insertion_idx))
 
         # Find border cell
         r = row
@@ -197,24 +148,24 @@ class C4FeatureAnalyzer(object):
             r += 1
             c -= 1
 
-        pre_row = []
-        post_row = []
+        vector = []
+        insertion_idx = None
         while True:
             if r < 0 or r >= 6 or c < 0 or c >= 7:
                 break
-            pre_row.append(self.state[r][c])
-            if c == column and r == row:
-                post_row.append(C4TeamPerspectiveSlotState.SELF.value)
-            else:
-                post_row.append(self.state[r][c])
+            vector.append(self.state[r][c])
+            if r == row and c == column:
+                insertion_idx = len(vector)
 
             r -= 1
             c += 1
 
-        pre_diag_stats_mp, post_diag_stats_mp = self.analyze_move_pre_post(np.array(pre_row), np.array(post_row))
-        diag_stats_mp = post_diag_stats_mp - pre_diag_stats_mp
+        vectors.append((np.array(vector), insertion_idx))
 
-        return np.array([up_down_stats, left_right_stats, diag_stats_pp, diag_stats_mp])
+        features = []
+        for v in vectors:
+            features.append(self.analyze_vector(v))
+        return features
 
 
 class C4Model(object):
@@ -226,7 +177,7 @@ class C4Model(object):
         global_input = Input(shape=(8,), name='globals')
         g = Dense(8, activation='relu')(global_input)
 
-        move_input = Input(shape=(7, 4, 3, 4), name='moves')
+        move_input = Input(shape=(7, 4, 2), name='moves')
         m = Dense(64, activation='relu')(move_input)
         m = Flatten()(m)
 

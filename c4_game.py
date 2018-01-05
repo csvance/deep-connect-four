@@ -42,7 +42,6 @@ class C4ActionResult(Enum):
 
 
 class C4Game(object):
-    STATE_DIM = 6 * 7 * 3
 
     def __init__(self):
         self.turn = None
@@ -192,12 +191,15 @@ class C4Game(object):
 
         state = self._state.copy()
 
+        # TODO: measure and optimize this
         if perspective == C4Team.BLACK:
-            np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.SELF.value+4])
             np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.ENEMY.value])
+            np.place(state, state == C4TeamPerspectiveSlotState.SELF.value+4, [C4TeamPerspectiveSlotState.SELF.value])
         elif perspective == C4Team.RED:
-            np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.SELF.value+4])
             np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.ENEMY.value])
+            np.place(state, state == C4TeamPerspectiveSlotState.SELF.value+4, [C4TeamPerspectiveSlotState.SELF.value])
 
         return state
 
@@ -221,7 +223,7 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def training_data(self) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    def training_data(self) -> Optional[Tuple]:
         if self.winner is None:
             return None
         elif self.winner == C4Team.RED:
