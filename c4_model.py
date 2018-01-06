@@ -237,8 +237,8 @@ class C4Model(object):
         self.gamma = gamma
 
         model = Sequential()
-        model.add(Conv2D(6 * 7, (4, 4), strides=1, input_shape=(6, 7, 3), activation='elu'))
-        model.add(Conv2D(6 * 7, (1, 2), strides=1, input_shape=(6, 7, 3), activation='elu'))
+        model.add(Conv2D(6 * 7, (4, 4), input_shape=(6, 7, 3), activation='elu'))
+        model.add(Conv2D(6 * 7, (1, 2), input_shape=(6, 7, 3), activation='elu'))
 
         model.add(Flatten())
         model.add(Dense(len(C4Move), activation='linear'))

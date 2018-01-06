@@ -51,7 +51,11 @@ class C4Game(object):
         self.winner = None
         self.red_memory = None
         self.black_memory = None
-        self.memories = deque(maxlen=4000)
+
+        self.winning_memories = deque(maxlen=2000)
+        self.losing_memories = deque(maxlen=2000)
+        self.win_step_memories = deque(maxlen=10)
+        self.loss_step_memories = deque(maxlen=10)
 
         self.reset()
 
@@ -170,32 +174,32 @@ class C4Game(object):
                 # Replay Winner
                 for item_idx, item in enumerate(self.red_memory):
                     if item_idx == len(self.red_memory) - 1:
-                        self.memories.append((item[0], item[1], 1., item[3], True))
+                        self.win_step_memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0., item[3], False))
+                        self.winning_memories.append((item[0], item[1], 0., item[3], False))
 
                 # Replay Loser
                 for item_idx, item in enumerate(self.black_memory):
                     if item_idx == len(self.black_memory) - 1:
-                        self.memories.append((item[0], item[1], -1., item[3], True))
+                        self.loss_step_memories.append((item[0], item[1], -1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0., item[3], False))
+                        self.losing_memories.append((item[0], item[1], 0., item[3], False))
 
             elif team == C4Team.BLACK:
 
                 # Replay Winner
                 for item_idx, item in enumerate(self.black_memory):
                     if item_idx == len(self.black_memory) - 1:
-                        self.memories.append((item[0], item[1], 1., item[3], True))
+                        self.win_step_memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0., item[3], False))
+                        self.winning_memories.append((item[0], item[1], 0., item[3], False))
 
                 # Replay Loser
                 for item_idx, item in enumerate(self.red_memory):
                     if item_idx == len(self.red_memory) - 1:
-                        self.memories.append((item[0], item[1], -1., item[3], True))
+                        self.loss_step_memories.append((item[0], item[1], -1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0., item[3], False))
+                        self.losing_memories.append((item[0], item[1], 0., item[3], False))
 
         return action_result
 
@@ -271,8 +275,27 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def training_data(self, batch_size=128) -> deque:
-        if batch_size > len(self.memories):
-            return random.sample(self.memories, len(self.memories))
-        else:
-            return random.sample(self.memories, batch_size)
+    def training_data(self, batch_size=128, wins: int = 2, losses: int = 2):
+        bulk_size = batch_size - (wins + losses)
+        win_size = int(bulk_size / 2)
+        loss_size = int(bulk_size / 2)
+
+        while win_size + loss_size + wins + losses < batch_size:
+            win_size += 1
+
+        if win_size > len(self.winning_memories) or loss_size > len(self.losing_memories):
+            return None
+
+        win_samples = random.sample(self.winning_memories, win_size)
+        win_step_samples = random.sample(self.win_step_memories, wins)
+
+        loss_samples = random.sample(self.losing_memories, loss_size)
+        loss_step_samples = random.sample(self.loss_step_memories, losses)
+
+        batch = []
+        batch.extend(win_samples)
+        batch.extend(loss_samples)
+        batch.extend(win_step_samples)
+        batch.extend(loss_step_samples)
+
+        return random.sample(batch, batch_size)
