@@ -91,6 +91,9 @@ class C4Game(object):
             else:
                 in_a_row = 0
 
+        # TODO: Add diagnol win condition back into game
+        return C4ActionResult.NONE
+
         # Diagonal
         # Find border cell
         r = row
