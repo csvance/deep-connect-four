@@ -3,7 +3,7 @@ from typing import List, Tuple
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Conv2D, AveragePooling2D, Input, concatenate
+from keras.layers import Dense, Flatten, Conv2D, AveragePooling2D, Input, Reshape, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -12,7 +12,7 @@ from c4_game import C4Move
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.9999, epsilon_min=0.05,
-                 gamma=0.95, learning_rate=0.01):
+                 gamma=0.95, learning_rate=0.001):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -20,20 +20,17 @@ class C4Model(object):
 
         input = Input(shape=(6, 7, 3))
 
-        x_1 = Conv2D(6 * 7, (1, 4), activation='relu')(input)
-        x_2 = Conv2D(6 * 7, (4, 1), activation='relu')(input)
-
-        x_1 = AveragePooling2D((6, 4))(x_1)
-        x_2 = AveragePooling2D((3, 7))(x_2)
+        x_1 = Conv2D(3, (1, 4), activation='relu')(input)
+        x_2 = Conv2D(3, (4, 1), activation='relu')(input)
 
         x_1 = Flatten()(x_1)
         x_2 = Flatten()(x_2)
 
-        x_1 = Dense(6 * 7, activation='relu')(x_1)
-        x_2 = Dense(6 * 7, activation='relu')(x_2)
+        x_1 = Dense(6, activation='relu')(x_1)
+        x_2 = Dense(7, activation='relu')(x_2)
 
-        x_1 = Dense(6 * 7, activation='relu')(x_1)
-        x_2 = Dense(6 * 7, activation='relu')(x_2)
+        x_1 = Dense(6, activation='relu')(x_1)
+        x_2 = Dense(7, activation='relu')(x_2)
 
         c = concatenate([x_1, x_2])
 
