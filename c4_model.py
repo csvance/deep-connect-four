@@ -1,10 +1,12 @@
+from typing import List, Tuple
+
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, Conv2D, concatenate
-from keras.models import Model, Sequential
+from keras.layers import Dense, Flatten, Conv2D, MaxPooling2D
+from keras.models import Sequential
 from keras.optimizers import Adam
-from typing import List, Tuple
+
 from c4_game import C4TeamPerspectiveSlotState, C4Move
 
 
@@ -48,7 +50,7 @@ class C4FeatureAnalyzer(object):
         # Can this create a viable connection?
         good_front = 0
         connect_self = 0
-        for idx in range(min(len(vector), insertion_idx+1), min(len(vector), insertion_idx+4)):
+        for idx in range(min(len(vector), insertion_idx + 1), min(len(vector), insertion_idx + 4)):
             if vector[idx] == C4TeamPerspectiveSlotState.SELF.value:
                 good_front += 1
                 connect_self += 1
@@ -66,7 +68,7 @@ class C4FeatureAnalyzer(object):
 
         # Now from the back
         good_back = 0
-        for idx in reversed(range(max(0, insertion_idx-3), insertion_idx)):
+        for idx in reversed(range(max(0, insertion_idx - 3), insertion_idx)):
             if vector[idx] == C4TeamPerspectiveSlotState.SELF.value:
                 good_back += 1
                 connect_self += 1
@@ -90,7 +92,7 @@ class C4FeatureAnalyzer(object):
         block_front = 0
         block_enemy = 0
         # Will this block a viable connection for the enemy?
-        for idx in range(min(len(vector), insertion_idx+1), min(len(vector), insertion_idx+4)):
+        for idx in range(min(len(vector), insertion_idx + 1), min(len(vector), insertion_idx + 4)):
             if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value:
                 block_front += 1
                 block_enemy += 1
@@ -108,7 +110,7 @@ class C4FeatureAnalyzer(object):
 
         # Now from the back
         block_back = 0
-        for idx in reversed(range(max(0, insertion_idx-3), insertion_idx)):
+        for idx in reversed(range(max(0, insertion_idx - 3), insertion_idx)):
             if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value:
                 block_back += 1
                 block_enemy += 1
@@ -237,10 +239,10 @@ class C4Model(object):
         self.gamma = gamma
 
         model = Sequential()
-        model.add(Conv2D(6 * 7, (4, 4), input_shape=(6, 7, 3), activation='elu'))
-        model.add(Conv2D(6 * 7, (1, 2), input_shape=(6, 7, 3), activation='elu'))
-
+        model.add(Conv2D(6 * 7 * 3, (4, 4), input_shape=(6, 7, 3), activation='relu'))
+        model.add(MaxPooling2D((3, 3)))
         model.add(Flatten())
+        model.add(Dense((6 * 7), activation='relu'))
         model.add(Dense(len(C4Move), activation='linear'))
         model.compile(optimizer=Adam(lr=0.001), loss='mse')
         model.summary()

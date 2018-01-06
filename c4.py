@@ -1,9 +1,10 @@
 import argparse
-import datetime
 import os
+
 import numpy as np
+
 from c4_game import C4Game, C4Move, C4ActionResult, C4Team
-from c4_model import C4Model, C4FeatureAnalyzer
+from c4_model import C4Model
 
 
 def human_vs_human():

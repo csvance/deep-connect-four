@@ -1,8 +1,8 @@
-from enum import Enum, unique
-import numpy as np
-from typing import Tuple, Optional
 import random
 from collections import deque
+from enum import Enum, unique
+
+import numpy as np
 
 
 @unique
