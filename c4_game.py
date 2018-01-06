@@ -51,7 +51,7 @@ class C4Game(object):
         self.winner = None
         self.red_memory = None
         self.black_memory = None
-        self.win_memory = deque(maxlen=2000)
+        self.memories = deque(maxlen=2000)
 
         self.reset()
 
@@ -156,10 +156,7 @@ class C4Game(object):
 
         action_result = self._check_winner(row, column)
 
-        if action_result == C4ActionResult.VICTORY:
-            reward = 1.
-        else:
-            reward = 0.
+        reward = 0.
 
         if team == C4Team.RED:
             self.red_memory.append((old_state, C4Move(column).value, reward, new_state))
@@ -169,19 +166,36 @@ class C4Game(object):
         # If someone won store their data
         if action_result == C4ActionResult.VICTORY:
             if team == C4Team.RED:
+
+                # Replay Winner
                 for item_idx, item in enumerate(self.red_memory):
-                    if item_idx >= len(self.red_memory) - 1:
-                        done = True
+                    if item_idx == len(self.red_memory) - 1:
+                        self.memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        done = False
-                    self.win_memory.append((item[0], item[1], item[2], item[3], done))
-            elif team == C4Team.BLACK:
+                        self.memories.append((item[0], item[1], 0., item[3], False))
+
+                # Replay Loser
                 for item_idx, item in enumerate(self.black_memory):
-                    if item_idx >= len(self.black_memory) - 1:
-                        done = True
+                    if item_idx == len(self.black_memory) - 1:
+                        self.memories.append((item[0], item[1], -1., item[3], True))
                     else:
-                        done = False
-                    self.win_memory.append((item[0], item[1], item[2], item[3], done))
+                        self.memories.append((item[0], item[1], 0., item[3], False))
+
+            elif team == C4Team.BLACK:
+
+                # Replay Winner
+                for item_idx, item in enumerate(self.black_memory):
+                    if item_idx == len(self.black_memory) - 1:
+                        self.memories.append((item[0], item[1], 1., item[3], True))
+                    else:
+                        self.memories.append((item[0], item[1], 0., item[3], False))
+
+                # Replay Loser
+                for item_idx, item in enumerate(self.red_memory):
+                    if item_idx == len(self.red_memory) - 1:
+                        self.memories.append((item[0], item[1], -1., item[3], True))
+                    else:
+                        self.memories.append((item[0], item[1], 0., item[3], False))
 
         return action_result
 
@@ -258,7 +272,7 @@ class C4Game(object):
             return C4Team.BLACK
 
     def training_data(self, batch_size=128) -> deque:
-        if batch_size > len(self.win_memory):
-            return random.sample(self.win_memory, len(self.win_memory))
+        if batch_size > len(self.memories):
+            return random.sample(self.memories, len(self.memories))
         else:
-            return random.sample(self.win_memory, batch_size)
+            return random.sample(self.memories, batch_size)
