@@ -129,9 +129,9 @@ if __name__ == '__main__':
     parser.add_argument('--weights-file', type=str, default="weights.h5")
     parser.add_argument('--epsilon', type=float, default=0.01)
     parser.add_argument('--epsilon-decay', type=float, default=0.9999)
-    parser.add_argument('--epsilon-min', type=float, default=0.01)
+    parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-games', type=int, default=20)
-    parser.add_argument('--gamma', type=float, default=0.9)
+    parser.add_argument('--gamma', type=float, default=0.95)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
