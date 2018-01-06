@@ -61,7 +61,8 @@ def human_vs_ai(weight_file):
             c4.reset()
 
 
-def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float, games: int, gamma: float):
+def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float, games: int, gamma: float,
+             win_samples: int, lose_samples: int):
     game_no = 0
     red_wins = 0
     black_wins = 0
@@ -98,7 +99,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 black_wins += 1
 
             # Train
-            winning_data = c4.training_data()
+            winning_data = c4.training_data(wins=win_samples, losses=lose_samples)
             if winning_data is not None:
                 loss_count = 0
                 loss_sum = 0.
@@ -135,6 +136,8 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon-decay', type=float, default=0.9999)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-games', type=int, default=20)
+    parser.add_argument('--win-samples', type=int, default=2)
+    parser.add_argument('--lose-samples', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.95)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
@@ -146,7 +149,8 @@ if __name__ == '__main__':
         human_vs_human()
     elif args.mode == 'ava':
         ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_decay=args.epsilon_decay,
-                 epsilon_min=args.epsilon_min, games=args.training_games, gamma=args.gamma)
+                 epsilon_min=args.epsilon_min, games=args.training_games, gamma=args.gamma, win_samples=args.win_samples
+                 , lose_samples=args.lose_samples)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     else:
