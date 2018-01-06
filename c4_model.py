@@ -18,10 +18,10 @@ class C4Model(object):
         self.epsilon_min = epsilon_min
         self.gamma = gamma
 
-        input = Input(shape=(6, 7, 3))
+        input = Input(shape=(6, 7, 1))
 
-        x_1 = Conv2D(3, (1, 4), activation='relu')(input)
-        x_2 = Conv2D(3, (4, 1), activation='relu')(input)
+        x_1 = Conv2D(1, (1, 4), activation='relu')(input)
+        x_2 = Conv2D(1, (4, 1), activation='relu')(input)
 
         x_1 = Flatten()(x_1)
         x_2 = Flatten()(x_2)

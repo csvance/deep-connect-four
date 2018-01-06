@@ -244,19 +244,16 @@ class C4Game(object):
         # TODO: measure and optimize this
         if perspective == C4Team.BLACK:
             np.place(state, state == C4Team.BLACK.value, [127])
-            np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.ENEMY.value])
-            np.place(state, state == 127, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == C4Team.RED.value, [-1])
+            np.place(state, state == 127, [1])
         elif perspective == C4Team.RED:
             np.place(state, state == C4Team.RED.value, [127])
-            np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.ENEMY.value])
-            np.place(state, state == 127, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == C4Team.BLACK.value, [-1])
+            np.place(state, state == 127, [1])
 
-        one_hot_state = np.zeros((6, 7, 3), dtype=np.int8)
-        for a_idx, a in enumerate(state):
-            for b_idx, b in enumerate(a):
-                one_hot_state[a_idx][b_idx][b] = 1
+        dense_state = state.reshape((6, 7, 1))
 
-        return one_hot_state
+        return dense_state
 
     def display(self) -> str:
 
