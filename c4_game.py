@@ -1,6 +1,8 @@
 from enum import Enum, unique
 import numpy as np
 from typing import Tuple, Optional
+import random
+from collections import deque
 
 
 @unique
@@ -45,30 +47,29 @@ class C4Game(object):
 
     def __init__(self):
         self.turn = None
-        self._state = None
-        self._red_states = None
-        self._red_labels = None
-        self._black_states = None
-        self._black_states = None
+        self.state = None
         self.winner = None
+        self.red_memory = None
+        self.black_memory = None
+        self.win_memory = deque(maxlen=2000)
+
         self.reset()
 
     def reset(self):
         self.turn = 0
+        self.state = np.zeros((6, 7), dtype=np.int8)
         self.winner = None
-        self._state = np.zeros((6, 7), dtype=np.int8)
-        self._red_states = []
-        self._red_labels = []
-        self._black_states = []
-        self._black_labels = []
+
+        self.red_memory = []
+        self.black_memory = []
 
     def _check_winner(self, row: int, column: int) -> C4ActionResult:
 
-        team = self._state[row][column]
+        team = self.state[row][column]
 
         # # Left / Right
         in_a_row = 0
-        for item in self._state[row]:
+        for item in self.state[row]:
             if item == team:
                 in_a_row += 1
                 if in_a_row == 4:
@@ -78,7 +79,7 @@ class C4Game(object):
 
         # Up / Down
         in_a_row = 0
-        for item in self._state[:, column]:
+        for item in self.state[:, column]:
             if item == team:
                 in_a_row += 1
                 if in_a_row == 4:
@@ -102,7 +103,7 @@ class C4Game(object):
         while True:
             if r < 0 or r >= 6 or c < 0 or c >= 7:
                 break
-            item = self._state[r][c]
+            item = self.state[r][c]
             if item == team:
                 in_a_row += 1
                 if in_a_row == 4:
@@ -128,7 +129,7 @@ class C4Game(object):
         while True:
             if r < 0 or r >= 6 or c < 0 or c >= 7:
                 break
-            item = self._state[r][c]
+            item = self.state[r][c]
             if item == team:
                 in_a_row += 1
                 if in_a_row == 4:
@@ -141,20 +142,48 @@ class C4Game(object):
 
         return C4ActionResult.NONE
 
+    def reward(self):
+        if self.turn < 3:
+            return (self.turn + 1) / 4.
+        return 1 - (self.turn / 42.)
+
     def _apply_action(self, row: int, column: int, team: C4Team) -> C4ActionResult:
 
-        state = self.state(team)
+        old_state = self.perspective_state(team)
+        self.state[row][column] = team.value
+        self.turn += 1
+        new_state = self.perspective_state(team)
+
+        action_result = self._check_winner(row, column)
+
+        if action_result == C4ActionResult.VICTORY:
+            reward = 1.
+        else:
+            reward = 0.
 
         if team == C4Team.RED:
-            self._red_states.append(state)
-            self._red_labels.append(C4Move(column).value)
+            self.red_memory.append((old_state, C4Move(column).value, reward, new_state))
         elif team == C4Team.BLACK:
-            self._black_states.append(state)
-            self._black_labels.append(C4Move(column).value)
+            self.black_memory.append((old_state, C4Move(column).value, reward, new_state))
 
-        self._state[row][column] = team.value
-        self.turn += 1
-        return self._check_winner(row, column)
+        # If someone won store their data
+        if action_result == C4ActionResult.VICTORY:
+            if team == C4Team.RED:
+                for item_idx, item in enumerate(self.red_memory):
+                    if item_idx >= len(self.red_memory) - 1:
+                        done = True
+                    else:
+                        done = False
+                    self.win_memory.append((item[0], item[1], item[2], item[3], done))
+            elif team == C4Team.BLACK:
+                for item_idx, item in enumerate(self.black_memory):
+                    if item_idx >= len(self.black_memory) - 1:
+                        done = True
+                    else:
+                        done = False
+                    self.win_memory.append((item[0], item[1], item[2], item[3], done))
+
+        return action_result
 
     def action(self, move: C4Move, team: C4Team) -> C4ActionResult:
 
@@ -162,7 +191,7 @@ class C4Game(object):
 
         # Put piece in first available row
         for row in reversed(range(0, 6)):
-            if self._state[row][column] == C4SlotState.EMPTY.value:
+            if self.state[row][column] == C4SlotState.EMPTY.value:
                 if self._apply_action(row, column, team) == C4ActionResult.VICTORY:
                     self.winner = team
                     return C4ActionResult.VICTORY
@@ -177,7 +206,7 @@ class C4Game(object):
         for column in range(0, 7):
             valid = False
             for row in reversed(range(0, 6)):
-                if self._state[row][column] == C4SlotState.EMPTY.value:
+                if self.state[row][column] == C4SlotState.EMPTY.value:
                     valid = True
                     break
             if valid:
@@ -187,26 +216,31 @@ class C4Game(object):
 
         return np.array(valid_moves)
 
-    def state(self, perspective: C4Team) -> np.ndarray:
+    def perspective_state(self, perspective: C4Team) -> np.ndarray:
 
-        state = self._state.copy()
+        state = self.state.copy()
 
         # TODO: measure and optimize this
         if perspective == C4Team.BLACK:
-            np.place(state, state == C4Team.BLACK.value, [99])
+            np.place(state, state == C4Team.BLACK.value, [127])
             np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.ENEMY.value])
-            np.place(state, state == 99, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == 127, [C4TeamPerspectiveSlotState.SELF.value])
         elif perspective == C4Team.RED:
-            np.place(state, state == C4Team.RED.value, [99])
+            np.place(state, state == C4Team.RED.value, [127])
             np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.ENEMY.value])
-            np.place(state, state == 99, [C4TeamPerspectiveSlotState.SELF.value])
+            np.place(state, state == 127, [C4TeamPerspectiveSlotState.SELF.value])
 
-        return state
+        one_hot_state = np.zeros((6, 7, 3), dtype=np.int8)
+        for a_idx, a in enumerate(state):
+            for b_idx, b in enumerate(a):
+                one_hot_state[a_idx][b_idx][b] = 1
+
+        return one_hot_state
 
     def display(self) -> str:
 
         output = "(1)(2)(3)(4)(5)(6)(7)\n"
-        for row in self._state:
+        for row in self.state:
             for slot in row:
                 if slot == C4SlotState.EMPTY.value:
                     output += "( )"
@@ -223,10 +257,8 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def training_data(self) -> Optional[Tuple]:
-        if self.winner is None:
-            return None
-        elif self.winner == C4Team.RED:
-            return self._red_states, self._red_labels
-        elif self.winner == C4Team.BLACK:
-            return self._black_states, self._black_labels
+    def training_data(self, batch_size=128) -> deque:
+        if batch_size > len(self.win_memory):
+            return random.sample(self.win_memory, len(self.win_memory))
+        else:
+            return random.sample(self.win_memory, batch_size)

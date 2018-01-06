@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
 from keras.layers import Dense, Flatten, Input, concatenate
-from keras.models import Model
+from keras.models import Model, Sequential
 from keras.optimizers import Adam
 from typing import List, Tuple
 from c4_game import C4TeamPerspectiveSlotState, C4Move
@@ -39,6 +39,7 @@ class C4FeatureAnalyzer(object):
 
         return column_slot_filled_ratios
 
+    # TODO: verify ranges
     def analyze_vector(self, v: Tuple[np.ndarray, int]):
 
         vector = v[0]
@@ -56,6 +57,13 @@ class C4FeatureAnalyzer(object):
             else:
                 break
 
+        friendly_in_a_row_front = 0
+        for idx in range(min(len(vector), insertion_idx + 1), min(len(vector), insertion_idx + 4)):
+            if vector[idx] == C4TeamPerspectiveSlotState.SELF.value:
+                friendly_in_a_row_front += 1
+            else:
+                break
+
         # Now from the back
         good_back = 0
         for idx in reversed(range(max(0, insertion_idx-3), insertion_idx)):
@@ -64,6 +72,13 @@ class C4FeatureAnalyzer(object):
                 connect_self += 1
             elif vector[idx] == C4TeamPerspectiveSlotState.EMPTY.value:
                 good_back += 1
+            else:
+                break
+
+        friendly_in_a_row_back = 0
+        for idx in reversed(range(max(0, insertion_idx - 3), insertion_idx)):
+            if vector[idx] == C4TeamPerspectiveSlotState.SELF.value:
+                friendly_in_a_row_back += 1
             else:
                 break
 
@@ -84,6 +99,13 @@ class C4FeatureAnalyzer(object):
             else:
                 break
 
+        enemy_in_a_row_front = 0
+        for idx in range(min(len(vector), insertion_idx + 1), min(len(vector), insertion_idx + 4)):
+            if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value:
+                enemy_in_a_row_front += 1
+            else:
+                break
+
         # Now from the back
         block_back = 0
         for idx in reversed(range(max(0, insertion_idx-3), insertion_idx)):
@@ -95,12 +117,21 @@ class C4FeatureAnalyzer(object):
             else:
                 break
 
+        enemy_in_a_row_back = 0
+        for idx in reversed(range(max(0, insertion_idx - 3), insertion_idx)):
+            if vector[idx] == C4TeamPerspectiveSlotState.ENEMY.value:
+                enemy_in_a_row_back += 1
+            else:
+                break
+
         if block_front + block_back + 1 >= 4:
             potential_block = 1
         else:
             potential_block = 0
 
-        return [potential_connection, potential_block, connect_self / 6., block_enemy / 6.]
+        return [potential_connection, potential_block, connect_self / 6., block_enemy / 6.,
+                max(friendly_in_a_row_front, friendly_in_a_row_back) / 3.,
+                max(enemy_in_a_row_front, enemy_in_a_row_back) / 3.]
 
     def analyze_move(self, column: int) -> List:
 
@@ -111,7 +142,7 @@ class C4FeatureAnalyzer(object):
                 last_empty = row
 
         if last_empty is None:
-            return [0., 0., 0., 0.]
+            return [0., 0., 0., 0., 0., 0.]
 
         # It is possible to make a move here, so lets analyze it
         row = last_empty
@@ -178,6 +209,8 @@ class C4FeatureAnalyzer(object):
         block_space_normalized = 0
         connect_self_normalized = 0
         block_enemy_normalized = 0
+        friendly_in_a_row_normalized = 0
+        enemy_in_a_row_normalized = 0
         for v in vectors:
             f = self.analyze_vector(v)
             connect_space_normalized += f[0]
@@ -185,34 +218,30 @@ class C4FeatureAnalyzer(object):
             connect_self_normalized += f[2]
             block_enemy_normalized += f[3]
 
+            friendly_in_a_row_normalized = max(friendly_in_a_row_normalized, f[4])
+            enemy_in_a_row_normalized = max(enemy_in_a_row_normalized, f[4])
+
         connect_space_normalized /= 4.
         block_space_normalized /= 4.
         connect_self_normalized /= 4.
         block_enemy_normalized /= 4.
 
-        return [connect_space_normalized, block_space_normalized, connect_self_normalized, block_enemy_normalized]
+        return [friendly_in_a_row_normalized, enemy_in_a_row_normalized]
 
 
 class C4Model(object):
-    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.995, epsilon_min=0.01):
+    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.999, epsilon_min=0.05, gamma=0.95):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
+        self.gamma = gamma
 
-        global_input = Input(shape=(1,), name='globals')
-        g = Dense(1, activation='relu')(global_input)
-
-        move_input = Input(shape=(7, 4), name='moves')
-        m = Dense(28, activation='relu')(move_input)
-        m = Flatten()(m)
-
-        c = concatenate([g, m])
-        c = Dense(16, activation='relu')(c)
-
-        output = Dense(len(C4Move), activation='softmax')(c)
-
-        model = Model(inputs=[global_input, move_input], outputs=[output])
-        model.compile(optimizer=Adam(lr=0.001), loss='sparse_categorical_crossentropy')
+        model = Sequential()
+        model.add(Dense(6 * 7 * 3, input_shape=(6, 7, 3), activation='relu'))
+        model.add(Dense(6 * 7 * 3, activation='relu'))
+        model.add(Flatten())
+        model.add(Dense(len(C4Move), activation='linear'))
+        model.compile(optimizer=Adam(lr=0.001), loss='mse')
         model.summary()
         self._model = model
 
@@ -222,10 +251,21 @@ class C4Model(object):
             set_session(tf.Session(config=config))
 
     # Data is the game state, labels are the action taken
-    def train(self, data, labels, reward=1):
-        return self._model.fit(data, labels, batch_size=1, verbose=1, epochs=reward)
+    def train(self, state_i: np.ndarray, action: C4Move, reward: float, state_f: np.ndarray, done: bool):
 
-    def predict(self, state, valid_moves: np.ndarray, argmax=False) -> C4Move:
+        if not done:
+            target = reward + self.gamma * np.amax(self._model.predict(np.array([state_f]))[0])
+        else:
+            target = reward
+
+        target_f = self._model.predict(np.array([state_i]))
+        target_f[0][action] = target
+
+        history = self._model.fit(np.array([state_i]), target_f, epochs=1, verbose=0)
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        return history
+
+    def predict(self, state, valid_moves: np.ndarray) -> C4Move:
         if np.random.rand() <= self.epsilon:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
@@ -233,7 +273,7 @@ class C4Model(object):
                     potential_moves.append(C4Move(idx))
             return np.random.choice(potential_moves)
 
-        predictions = self._model.predict(state)[0]
+        predictions = self._model.predict(np.array([state]))[0]
 
         # We only want valid moves
         predictions = predictions * valid_moves
@@ -251,13 +291,7 @@ class C4Model(object):
                     potential_moves.append(C4Move(idx))
             return np.random.choice(potential_moves)
 
-        if argmax:
-            return C4Move(np.argmax(predictions))
-        else:
-            return C4Move(np.random.choice([i for i in range(0, 7)], p=predictions))
-
-    def decay(self):
-        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        return C4Move(np.argmax(predictions))
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)
