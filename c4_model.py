@@ -26,11 +26,8 @@ class C4Model(object):
         x_1 = Flatten()(x_1)
         x_2 = Flatten()(x_2)
 
-        x_1 = Dense(6, activation='relu')(x_1)
-        x_2 = Dense(7, activation='relu')(x_2)
-
-        x_1 = Dense(6, activation='relu')(x_1)
-        x_2 = Dense(7, activation='relu')(x_2)
+        x_1 = Dense(6 * 4, activation='relu')(x_1)
+        x_2 = Dense(3 * 7, activation='relu')(x_2)
 
         c = concatenate([x_1, x_2])
 
