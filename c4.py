@@ -27,7 +27,7 @@ def human_vs_human():
 
 def human_vs_ai(weight_file):
     c4 = C4Game()
-    c4ai = C4Model(epsilon=0., epsilon_min=0.)
+    c4ai = C4Model(epsilon=0., epsilon_min=0., epsilon_decay=1.)
     try:
         if weight_file is not None:
             c4ai.load(weight_file)
@@ -61,13 +61,13 @@ def human_vs_ai(weight_file):
             c4.reset()
 
 
-def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float, games: int):
+def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float, games: int, gamma: float):
     game_no = 0
     red_wins = 0
     black_wins = 0
 
     c4 = C4Game()
-    c4ai = C4Model(epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min)
+    c4ai = C4Model(epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min, gamma=gamma)
     try:
         if weights_file is not None:
             c4ai.load(weights_file)
@@ -131,6 +131,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon-decay', type=float, default=0.9999)
     parser.add_argument('--epsilon-min', type=float, default=0.01)
     parser.add_argument('--training-games', type=int, default=20)
+    parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
@@ -141,7 +142,7 @@ if __name__ == '__main__':
         human_vs_human()
     elif args.mode == 'ava':
         ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_decay=args.epsilon_decay,
-                 epsilon_min=args.epsilon_min, games=args.training_games)
+                 epsilon_min=args.epsilon_min, games=args.training_games, gamma=args.gamma)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     else:

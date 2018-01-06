@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, concatenate
+from keras.layers import Dense, Flatten, Input, Conv2D, concatenate
 from keras.models import Model, Sequential
 from keras.optimizers import Adam
 from typing import List, Tuple
@@ -230,15 +230,15 @@ class C4FeatureAnalyzer(object):
 
 
 class C4Model(object):
-    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.9999, epsilon_min=0.01, gamma=0.95):
+    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.9999, epsilon_min=0.05, gamma=0.95):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
         self.gamma = gamma
 
         model = Sequential()
-        model.add(Dense(6 * 7 * 3, input_shape=(6, 7, 3), activation='relu'))
-        model.add(Dense(6 * 7 * 3, activation='relu'))
+        model.add(Conv2D(6 * 7, (4, 4), input_shape=(6, 7, 3), activation='elu'))
+        model.add(Conv2D(6 * 7, (2, 2), activation='elu'))
         model.add(Flatten())
         model.add(Dense(len(C4Move), activation='linear'))
         model.compile(optimizer=Adam(lr=0.001), loss='mse')

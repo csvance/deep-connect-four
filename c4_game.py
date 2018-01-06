@@ -51,7 +51,7 @@ class C4Game(object):
         self.winner = None
         self.red_memory = None
         self.black_memory = None
-        self.memories = deque(maxlen=2000)
+        self.memories = deque(maxlen=4000)
 
         self.reset()
 
@@ -172,12 +172,12 @@ class C4Game(object):
                     if item_idx == len(self.red_memory) - 1:
                         self.memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0.5, item[3], False))
+                        self.memories.append((item[0], item[1], 0., item[3], False))
 
                 # Replay Loser
                 for item_idx, item in enumerate(self.black_memory):
                     if item_idx == len(self.black_memory) - 1:
-                        self.memories.append((item[0], item[1], 0., item[3], True))
+                        self.memories.append((item[0], item[1], -1., item[3], True))
                     else:
                         self.memories.append((item[0], item[1], 0., item[3], False))
 
@@ -188,12 +188,12 @@ class C4Game(object):
                     if item_idx == len(self.black_memory) - 1:
                         self.memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0.5, item[3], False))
+                        self.memories.append((item[0], item[1], 0., item[3], False))
 
                 # Replay Loser
                 for item_idx, item in enumerate(self.red_memory):
                     if item_idx == len(self.red_memory) - 1:
-                        self.memories.append((item[0], item[1], 0., item[3], True))
+                        self.memories.append((item[0], item[1], -1., item[3], True))
                     else:
                         self.memories.append((item[0], item[1], 0., item[3], False))
 
