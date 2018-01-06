@@ -230,7 +230,7 @@ class C4FeatureAnalyzer(object):
 
 
 class C4Model(object):
-    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.999, epsilon_min=0.05, gamma=0.95):
+    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.9999, epsilon_min=0.01, gamma=0.95):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -277,19 +277,6 @@ class C4Model(object):
 
         # We only want valid moves
         predictions = predictions * valid_moves
-
-        # Re-normalize
-        sigma = np.sum(predictions)
-        try:
-            predictions = predictions / sigma
-        except FloatingPointError:
-            # If we had a floating point exception, it means no valid moves had non-zero p_values.
-            # Choose a valid move at random
-            potential_moves = []
-            for idx in range(0, len(valid_moves)):
-                if valid_moves[idx] == 1:
-                    potential_moves.append(C4Move(idx))
-            return np.random.choice(potential_moves)
 
         return C4Move(np.argmax(predictions))
 

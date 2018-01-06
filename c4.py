@@ -97,14 +97,18 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
             elif current_team == C4Team.BLACK:
                 black_wins += 1
 
-            print("Red: %d Black %d Epsilon: %f" % (red_wins, black_wins, c4ai.epsilon))
-            print(c4.display())
-            print("")
-
             # Train
             winning_data = c4.training_data()
+            loss_count = 0
+            loss_sum = 0.
             for state_i, action, reward, state_f, done in winning_data:
-                c4ai.train(state_i, action, reward, state_f, done)
+                history = c4ai.train(state_i, action, reward, state_f, done)
+                loss_count += 1
+                loss_sum += history.history['loss'][0]
+
+            print("Red: %d Black %d Epsilon: %f Loss: %f" % (red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
+            print(c4.display())
+            print("")
 
             if game_no != 0 and game_no % games == 0:
                 print("Saving...")
@@ -124,8 +128,8 @@ if __name__ == '__main__':
     parser.add_argument('mode')
     parser.add_argument('--weights-file', type=str, default="weights.h5")
     parser.add_argument('--epsilon', type=float, default=0.01)
-    parser.add_argument('--epsilon-decay', type=float, default=0.999)
-    parser.add_argument('--epsilon-min', type=float, default=0.05)
+    parser.add_argument('--epsilon-decay', type=float, default=0.9999)
+    parser.add_argument('--epsilon-min', type=float, default=0.01)
     parser.add_argument('--training-games', type=int, default=20)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
