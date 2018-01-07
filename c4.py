@@ -26,12 +26,12 @@ def human_vs_human():
             c4.reset()
 
 
-def human_vs_ai(weight_file):
+def human_vs_ai(weights_file):
     c4 = C4Game()
     c4ai = C4Model(epsilon=0., epsilon_min=0., epsilon_decay=1.)
     try:
-        if weight_file is not None:
-            c4ai.load(weight_file)
+        if weights_file is not None:
+            c4ai.load(weights_file)
     except OSError:
         print("Warning: could not load weights file!")
         pass
@@ -57,6 +57,21 @@ def human_vs_ai(weight_file):
 
         print("Result: %s" % result)
         if result == C4ActionResult.VICTORY:
+            # Train
+            winning_data = c4.training_data()
+            if not c4.is_duplicate_game():
+
+                loss_count = 0
+                loss_sum = 0.
+                for state_i, action, reward, state_f, done in winning_data:
+                    history = c4ai.train(state_i, action, reward, state_f, done)
+                    loss_count += 1
+                    loss_sum += history.history['loss'][0]
+
+                print("Saving...")
+                c4ai.save(weights_file)
+
+
             c4.reset()
         elif result == C4ActionResult.TIE:
             c4.reset()

@@ -53,8 +53,8 @@ class C4Game(object):
         self.black_memories = None
         self.last_won_game_state = None
         self.duplicate_game = None
-        self.normal_memories = deque(maxlen=2000)
-        self.win_loss_memories = deque(maxlen=32)
+        self.normal_memories = deque(maxlen=4096)
+        self.win_loss_memories = deque(maxlen=128)
 
         self.reset()
 
@@ -285,7 +285,7 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def training_data(self, batch_size=128, win_loss_samples=16):
+    def training_data(self, batch_size=128, win_loss_samples=32):
 
         win_loss_batch_size = win_loss_samples
         normal_batch_size = batch_size - win_loss_batch_size

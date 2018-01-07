@@ -20,10 +20,9 @@ class C4Model(object):
 
         input = Input(shape=(6, 7, 2))
 
-        x = Conv2D(4 * 6 * 7, (4, 4), activation='relu')(input)
+        x = Conv2D(32, (4, 4), activation='relu')(input)
         x = Flatten()(x)
-        x = Dense(16 * 6 * 7, activation='relu')(x)
-
+        x = Dense(32 * 3 * 4, activation='relu')(x)
         output = Dense(len(C4Move), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)
