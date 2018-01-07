@@ -12,7 +12,7 @@ from c4_game import C4Move
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.9999, epsilon_min=0.05,
-                 gamma=0.8, learning_rate=0.001):
+                 gamma=0.9, learning_rate=0.001):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
