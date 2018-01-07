@@ -20,19 +20,10 @@ class C4Model(object):
 
         input = Input(shape=(6, 7, 2))
 
-        x_1 = Conv2D(2, (1, 4), activation='relu')(input)
-        x_2 = Conv2D(2, (4, 1), activation='relu')(input)
+        x = Conv2D(4 * 6 * 7, (4, 4), activation='relu')(input)
+        x = Flatten()(x)
+        x = Dense(16 * 6 * 7, activation='relu')(x)
 
-        x_1 = Flatten()(x_1)
-        x_2 = Flatten()(x_2)
-
-        x_1 = Dense(2 * 6 * 4, activation='relu')(x_1)
-        x_2 = Dense(2 * 3 * 7, activation='relu')(x_2)
-
-        c = concatenate([x_1, x_2])
-
-        x = Dense(2 * 6 * 7, activation='relu')(c)
-        x = Dense(6 * 7, activation='relu')(c)
         output = Dense(len(C4Move), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)
