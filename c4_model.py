@@ -32,6 +32,7 @@ class C4Model(object):
         c = concatenate([x_1, x_2])
 
         x = Dense(2 * 6 * 7, activation='relu')(c)
+        x = Dense(6 * 7, activation='relu')(c)
         output = Dense(len(C4Move), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)

@@ -263,7 +263,7 @@ class C4Game(object):
                 if column == C4TeamPerspectiveSlotState.SELF.value:
                     one_hot_state[row_idx][col_idx][0] = 1
                 elif column == C4TeamPerspectiveSlotState.ENEMY.value:
-                    one_hot_state[row_idx][col_idx][0] = 1
+                    one_hot_state[row_idx][col_idx][1] = 1
 
         return one_hot_state
 
