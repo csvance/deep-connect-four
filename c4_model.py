@@ -32,7 +32,7 @@ class C4Model(object):
         self._model = model
 
         if use_gpu:
-            config = tf.ConfigProto(log_device_placement=True)
+            config = tf.ConfigProto(log_device_placement=False)
             config.gpu_options.allow_growth = True
             set_session(tf.Session(config=config))
 
