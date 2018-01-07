@@ -176,7 +176,7 @@ class C4Game(object):
                 self.duplicate_game = True
                 return action_result
 
-            self.last_won_game_state = self.state.copy()
+            self.last_won_game_state = self.state
 
             if team == C4Team.RED:
 
@@ -185,14 +185,14 @@ class C4Game(object):
                     if item_idx == len(self.red_memories) - 1:
                         self.memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0., item[3], False))
+                        self.memories.append((item[0], item[1], 0.1, item[3], False))
 
                 # Replay Loser
                 for item_idx, item in enumerate(self.black_memories):
                     if item_idx == len(self.black_memories) - 1:
                         self.memories.append((item[0], item[1], -1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0., item[3], False))
+                        self.memories.append((item[0], item[1], -0.1, item[3], False))
 
             elif team == C4Team.BLACK:
 
@@ -201,14 +201,14 @@ class C4Game(object):
                     if item_idx == len(self.black_memories) - 1:
                         self.memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0., item[3], False))
+                        self.memories.append((item[0], item[1], 0.1, item[3], False))
 
                 # Replay Loser
                 for item_idx, item in enumerate(self.red_memories):
                     if item_idx == len(self.red_memories) - 1:
                         self.memories.append((item[0], item[1], -1., item[3], True))
                     else:
-                        self.memories.append((item[0], item[1], 0., item[3], False))
+                        self.memories.append((item[0], item[1], -0.1, item[3], False))
 
         return action_result
 

@@ -49,6 +49,11 @@ class C4Model(object):
 
         if not done:
             target = reward + self.gamma * np.amax(self._model.predict(np.array([state_f]))[0])
+            # Clip reward
+            if target > 1.:
+                target = 1.
+            elif target < -1.:
+                target = -1.
         else:
             target = reward
 
