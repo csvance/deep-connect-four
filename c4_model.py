@@ -3,7 +3,7 @@ from typing import List, Tuple
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Conv2D, AveragePooling2D, Input, Reshape, concatenate
+from keras.layers import Dense, Flatten, Conv2D, Input, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -18,20 +18,20 @@ class C4Model(object):
         self.epsilon_min = epsilon_min
         self.gamma = gamma
 
-        input = Input(shape=(6, 7, 1))
+        input = Input(shape=(6, 7, 2))
 
-        x_1 = Conv2D(1, (1, 4), activation='relu')(input)
-        x_2 = Conv2D(1, (4, 1), activation='relu')(input)
+        x_1 = Conv2D(2, (1, 4), activation='relu')(input)
+        x_2 = Conv2D(2, (4, 1), activation='relu')(input)
 
         x_1 = Flatten()(x_1)
         x_2 = Flatten()(x_2)
 
-        x_1 = Dense(6 * 4, activation='relu')(x_1)
-        x_2 = Dense(3 * 7, activation='relu')(x_2)
+        x_1 = Dense(2 * 6 * 4, activation='relu')(x_1)
+        x_2 = Dense(2 * 3 * 7, activation='relu')(x_2)
 
         c = concatenate([x_1, x_2])
 
-        x = Dense(6 * 7, activation='relu')(c)
+        x = Dense(2 * 6 * 7, activation='relu')(c)
         output = Dense(len(C4Move), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)
