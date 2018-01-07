@@ -51,7 +51,7 @@ class C4Game(object):
         self.winner = None
         self.red_memories = None
         self.black_memories = None
-        self.last_game_state = None
+        self.last_won_game_state = None
         self.duplicate_game = None
         self.memories = deque(maxlen=2000)
 
@@ -171,11 +171,14 @@ class C4Game(object):
 
         # If someone won store their data
         if action_result == C4ActionResult.VICTORY:
-            if team == C4Team.RED:
 
-                if self.last_game_state is not None and self.last_game_state.all() == self.state.all():
-                    self.duplicate_game = True
-                    return action_result
+            if self.last_won_game_state is not None and self.last_won_game_state.all() == self.state.all():
+                self.duplicate_game = True
+                return action_result
+
+            self.last_won_game_state = self.state
+
+            if team == C4Team.RED:
 
                 # Replay Winner
                 for item_idx, item in enumerate(self.red_memories):
@@ -206,8 +209,6 @@ class C4Game(object):
                         self.memories.append((item[0], item[1], -1., item[3], True))
                     else:
                         self.memories.append((item[0], item[1], 0., item[3], False))
-
-                self.last_game_state = self.state
 
         return action_result
 
@@ -245,7 +246,6 @@ class C4Game(object):
     def perspective_state(self, perspective: C4Team) -> np.ndarray:
 
         state = self.state.copy()
-
 
         # TODO: measure and optimize this
         if perspective == C4Team.BLACK:
