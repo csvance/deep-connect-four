@@ -20,9 +20,10 @@ class C4Model(object):
 
         input = Input(shape=(6, 7, 2))
 
-        x = Conv2D(32, (4, 4), activation='relu')(input)
+        x = Conv2D(32, (4, 4), strides=1, activation='relu')(input)
         x = Flatten()(x)
         x = Dense(32 * 3 * 4, activation='relu')(x)
+
         output = Dense(len(C4Move), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)
@@ -31,7 +32,7 @@ class C4Model(object):
         self._model = model
 
         if use_gpu:
-            config = tf.ConfigProto()
+            config = tf.ConfigProto(log_device_placement=True)
             config.gpu_options.allow_growth = True
             set_session(tf.Session(config=config))
 
