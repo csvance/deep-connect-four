@@ -100,20 +100,22 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
 
             # Train
             winning_data = c4.training_data()
-            if winning_data is not None:
+            if not c4.is_duplicate_game():
                 loss_count = 0
                 loss_sum = 0.
                 for state_i, action, reward, state_f, done in winning_data:
                     history = c4ai.train(state_i, action, reward, state_f, done)
                     loss_count += 1
                     loss_sum += history.history['loss'][0]
-            else:
-                loss_sum = 0.
-                loss_count = 1.
 
-            print("Red: %d Black %d Epsilon: %f Loss: %f" % (red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
-            print(c4.display())
-            print("")
+                print("Red: %d Black %d Epsilon: %f Loss: %f" % (
+                    red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
+                print(c4.display())
+                print("")
+            else:
+                print("Duplicate game, retrying.")
+
+
 
             if game_no != 0 and game_no % games == 0:
                 print("Saving...")

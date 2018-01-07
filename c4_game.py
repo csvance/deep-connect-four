@@ -51,10 +51,9 @@ class C4Game(object):
         self.winner = None
         self.red_memories = None
         self.black_memories = None
-
-        self.winning_memories = deque(maxlen=2000)
-
-        self.last_loss_memory = []
+        self.last_game_state = None
+        self.duplicate_game = None
+        self.memories = deque(maxlen=2000)
 
         self.reset()
 
@@ -62,10 +61,10 @@ class C4Game(object):
         self.turn = 0
         self.state = np.zeros((6, 7), dtype=np.int8)
         self.winner = None
+        self.duplicate_game = False
 
         self.red_memories = []
         self.black_memories = []
-        self.last_loss_memory = []
 
     def _check_winner(self, row: int, column: int) -> C4ActionResult:
 
@@ -174,35 +173,41 @@ class C4Game(object):
         if action_result == C4ActionResult.VICTORY:
             if team == C4Team.RED:
 
+                if self.last_game_state is not None and self.last_game_state.all() == self.state.all():
+                    self.duplicate_game = True
+                    return action_result
+
                 # Replay Winner
                 for item_idx, item in enumerate(self.red_memories):
                     if item_idx == len(self.red_memories) - 1:
-                        self.winning_memories.append((item[0], item[1], 1., item[3], True))
+                        self.memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        self.winning_memories.append((item[0], item[1], 0., item[3], False))
+                        self.memories.append((item[0], item[1], 0., item[3], False))
 
                 # Replay Loser
                 for item_idx, item in enumerate(self.black_memories):
                     if item_idx == len(self.black_memories) - 1:
-                        self.last_loss_memory.append((item[0], item[1], -1., item[3], True))
+                        self.memories.append((item[0], item[1], -1., item[3], True))
                     else:
-                        self.last_loss_memory.append((item[0], item[1], 0., item[3], False))
+                        self.memories.append((item[0], item[1], 0., item[3], False))
 
             elif team == C4Team.BLACK:
 
                 # Replay Winner
                 for item_idx, item in enumerate(self.black_memories):
                     if item_idx == len(self.black_memories) - 1:
-                        self.winning_memories.append((item[0], item[1], 1., item[3], True))
+                        self.memories.append((item[0], item[1], 1., item[3], True))
                     else:
-                        self.winning_memories.append((item[0], item[1], 0., item[3], False))
+                        self.memories.append((item[0], item[1], 0., item[3], False))
 
                 # Replay Loser
                 for item_idx, item in enumerate(self.red_memories):
                     if item_idx == len(self.red_memories) - 1:
-                        self.last_loss_memory.append((item[0], item[1], -1., item[3], True))
+                        self.memories.append((item[0], item[1], -1., item[3], True))
                     else:
-                        self.last_loss_memory.append((item[0], item[1], 0., item[3], False))
+                        self.memories.append((item[0], item[1], 0., item[3], False))
+
+                self.last_game_state = self.state
 
         return action_result
 
@@ -277,15 +282,12 @@ class C4Game(object):
 
     def training_data(self, batch_size=128):
 
-        last_lost_memory = [i for i in reversed(self.last_loss_memory)]
-
-        need_samples_from_winning_memory = batch_size - len(last_lost_memory)
-        if need_samples_from_winning_memory > len(self.winning_memories):
-            winning_memories = random.sample(self.winning_memories, len(self.winning_memories))
+        if batch_size - 1 > len(self.memories):
+            winning_memories = random.sample(self.memories, len(self.memories))
         else:
-            winning_memories = random.sample(self.winning_memories, need_samples_from_winning_memory)
+            winning_memories = random.sample(self.memories, batch_size)
 
-        data = last_lost_memory
-        data.extend(winning_memories)
+        return winning_memories
 
-        return data
+    def is_duplicate_game(self):
+        return self.duplicate_game
