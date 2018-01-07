@@ -172,11 +172,11 @@ class C4Game(object):
         # If someone won store their data
         if action_result == C4ActionResult.VICTORY:
 
-            if self.last_won_game_state is not None and self.last_won_game_state.all() == self.state.all():
+            if self.last_won_game_state is not None and np.array_equal(self.last_won_game_state, self.state.all()):
                 self.duplicate_game = True
                 return action_result
 
-            self.last_won_game_state = self.state
+            self.last_won_game_state = self.state.copy()
 
             if team == C4Team.RED:
 

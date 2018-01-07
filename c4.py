@@ -92,15 +92,15 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
 
         result = c4.action(move, current_team)
         if result == C4ActionResult.VICTORY:
-            # Update stats
-            if current_team == C4Team.RED:
-                red_wins += 1
-            elif current_team == C4Team.BLACK:
-                black_wins += 1
-
             # Train
             winning_data = c4.training_data()
             if not c4.is_duplicate_game():
+                # Update stats
+                if current_team == C4Team.RED:
+                    red_wins += 1
+                elif current_team == C4Team.BLACK:
+                    black_wins += 1
+
                 loss_count = 0
                 loss_sum = 0.
                 for state_i, action, reward, state_f, done in winning_data:
@@ -112,17 +112,15 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                     red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
                 print(c4.display())
                 print("")
+
+                if game_no != 0 and game_no % games == 0:
+                    print("Saving...")
+                    c4ai.save(weights_file)
+                    print("Done.")
+
+                game_no += 1
             else:
                 print("Duplicate game, retrying.")
-
-
-
-            if game_no != 0 and game_no % games == 0:
-                print("Saving...")
-                c4ai.save(weights_file)
-                print("Done.")
-
-            game_no += 1
 
             # Reset
             c4.reset()
@@ -137,7 +135,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon', type=float, default=0.01)
     parser.add_argument('--epsilon-decay', type=float, default=0.9999)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
-    parser.add_argument('--training-games', type=int, default=100)
+    parser.add_argument('--training-games', type=int, default=20)
     parser.add_argument('--gamma', type=float, default=0.8)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
