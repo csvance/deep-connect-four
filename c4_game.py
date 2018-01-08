@@ -53,7 +53,7 @@ class C4Game(object):
         self.black_memories = None
         self.last_won_game_state = None
         self.duplicate_game = None
-        self.normal_memories = deque(maxlen=4096)
+        self.normal_memories = deque(maxlen=2048)
         self.win_loss_memories = deque(maxlen=128)
 
         self.last_winner = None
@@ -179,42 +179,26 @@ class C4Game(object):
 
             self.last_won_game_state = self.state
 
-            # Chance to not add winning samples from successive won games
-            winner_add_chance = max(0., 1 - np.sqrt(self.win_streak / 5.))
-
             if team == C4Team.RED:
-
-                # Replay Winner
-                for item_idx, item in enumerate(self.red_memories):
-                    if random.random() < winner_add_chance:
-                        if item_idx == len(self.red_memories) - 1:
-                            self.win_loss_memories.append((item[0], item[1], 1., item[3], True))
-                        else:
-                            self.normal_memories.append((item[0], item[1], 0.1, item[3], False))
-
-                # Replay Loser
-                for item_idx, item in enumerate(self.black_memories):
-                    if item_idx == len(self.black_memories) - 1:
-                        self.win_loss_memories.append((item[0], item[1], -1., item[3], True))
-                    else:
-                        self.normal_memories.append((item[0], item[1], -0.1, item[3], False))
-
+                winner_memories = self.red_memories
+                loser_memories = self.black_memories
             elif team == C4Team.BLACK:
+                winner_memories = self.black_memories
+                loser_memories = self.red_memories
 
-                # Replay Winner
-                for item_idx, item in enumerate(self.black_memories):
-                    if random.random() < winner_add_chance:
-                        if item_idx == len(self.black_memories) - 1:
-                            self.win_loss_memories.append((item[0], item[1], 1., item[3], True))
-                        else:
-                            self.normal_memories.append((item[0], item[1], 0.1, item[3], False))
+            # Replay Winner
+            for item_idx, item in enumerate(winner_memories):
+                if item_idx == len(winner_memories) - 1:
+                    self.win_loss_memories.append((item[0], item[1], 1., item[3], True))
+                else:
+                    self.normal_memories.append((item[0], item[1], 0.1, item[3], False))
 
-                # Replay Loser
-                for item_idx, item in enumerate(self.red_memories):
-                    if item_idx == len(self.red_memories) - 1:
-                        self.win_loss_memories.append((item[0], item[1], -1., item[3], True))
-                    else:
-                        self.normal_memories.append((item[0], item[1], -0.1, item[3], False))
+            # Replay Loser
+            for item_idx, item in enumerate(loser_memories):
+                if item_idx == len(loser_memories) - 1:
+                    self.win_loss_memories.append((item[0], item[1], -1., item[3], True))
+                else:
+                    self.normal_memories.append((item[0], item[1], 0.1, item[3], False))
 
             if team == self.last_winner:
                 self.win_streak += 1
@@ -299,7 +283,7 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def training_data(self, batch_size=128, win_loss_samples=32):
+    def training_data(self, batch_size=128, win_loss_samples=16):
 
         win_loss_batch_size = win_loss_samples
         normal_batch_size = batch_size - win_loss_batch_size

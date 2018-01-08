@@ -123,8 +123,11 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                     loss_count += 1
                     loss_sum += history.history['loss'][0]
 
+                min, max, avg, stdev = c4ai.stats()
+
                 print("Red: %d Black %d Epsilon: %f Loss: %f" % (
                     red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
+                print("Min: %f Max: %f Avg: %f Std: %f" % (min, max, avg, stdev))
                 print(c4.display())
                 print("")
 
@@ -147,11 +150,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode')
     parser.add_argument('--weights-file', type=str, default="weights.h5")
-    parser.add_argument('--epsilon', type=float, default=0.01)
-    parser.add_argument('--epsilon-decay', type=float, default=0.9999)
+    parser.add_argument('--epsilon', type=float, default=0.05)
+    parser.add_argument('--epsilon-decay', type=float, default=0.99999)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-games', type=int, default=20)
-    parser.add_argument('--gamma', type=float, default=0.9)
+    parser.add_argument('--gamma', type=float, default=0.75)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
