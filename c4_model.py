@@ -1,24 +1,25 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Conv2D, Input, concatenate
+from keras.layers import Dense, Flatten, Conv2D, Input
 from keras.models import Model
 from keras.optimizers import Adam
 
-
-from c4_game import C4Move
+from c4_game import C4Action, C4ActionResult, C4State
 
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.99999, epsilon_min=0.05,
-                 gamma=0.75, learning_rate=0.001):
+                 gamma=0.75, learning_rate=0.001, k: int = 6):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
         self.gamma = gamma
         self.reward_memory = []
-        self.clipped_count = 0
         self.info_loss = 0.
+        if k % 2 != 0:
+            raise ValueError('k must be an even number')
+        self.k = k
 
         input = Input(shape=(6, 7, 2))
 
@@ -26,7 +27,7 @@ class C4Model(object):
         x = Flatten()(x)
         x = Dense(64 * 3 * 4, activation='relu')(x)
 
-        output = Dense(len(C4Move), activation='linear')(x)
+        output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)
         model.compile(optimizer=Adam(lr=learning_rate), loss='mse')
@@ -39,52 +40,74 @@ class C4Model(object):
             set_session(tf.Session(config=config))
 
     # Data is the game state, labels are the action taken
-    def train(self, state_i: np.ndarray, action: C4Move, reward: float, state_f: np.ndarray, done: bool):
+    def train(self, result: C4ActionResult):
 
-        if not done:
-            target = reward + self.gamma * np.amax(self._model.predict(np.array([state_f]))[0])
-            # Clip reward
-            if target > 1.:
-                self.info_loss += abs(1 - target)
-                target = 1.
-                self.clipped_count += 1
-            elif target < -1.:
-                self.info_loss += abs(1 - target)
-                target = -1.
-                self.clipped_count += 1
+        positive_reward_sum = 0.
+        negative_reward_sum = 0.
+
+        if not result.done:
+
+            new_state = result.new_state.copy()
+            for k in range(0, self.k):
+
+                prediction = self._model.predict(np.array([new_state.one_hot()]))[0]
+                reward = np.amax(prediction)
+                action = C4Action(np.argmax(prediction))
+
+                # Self Reward
+                if k % 2 == 0:
+                    positive_reward_sum += reward
+                # Enemy Reward
+                else:
+                    negative_reward_sum -= reward
+
+                # Apply the action
+                move_result = new_state.move(action)
+
+                # Advance state one turn to change the perspective
+                new_state.next_turn()
+
+            target = result.reward + self.gamma * (
+                    (positive_reward_sum / (self.k / 2.)) + (negative_reward_sum / (self.k / 2.)))
         else:
-            target = reward
+            target = result.reward
+
+        # Clip reward
+        if target > 1.:
+            self.info_loss += abs(1 - target)
+            target = 1.
+        elif target < -1.:
+            self.info_loss += abs(1 - target)
+            target = -1.
 
         self.reward_memory.append(target)
 
-        target_f = self._model.predict(np.array([state_i]))
-        target_f[0][action] = target
+        target_f = self._model.predict(np.array([result.old_state.one_hot()]))
+        target_f[0][result.action.value] = target
 
-        history = self._model.fit(np.array([state_i]), target_f, epochs=1, verbose=0)
+        history = self._model.fit(np.array([result.old_state.one_hot()]), target_f, epochs=1, verbose=0)
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
         return history
 
-    def predict(self, state, valid_moves: np.ndarray) -> C4Move:
+    def predict(self, state: C4State, valid_moves: np.ndarray) -> C4Action:
         if np.random.rand() <= self.epsilon:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
                 if valid_moves[idx] == 1:
-                    potential_moves.append(C4Move(idx))
+                    potential_moves.append(C4Action(idx))
             return np.random.choice(potential_moves)
 
-        predictions = self._model.predict(np.array([state]))[0]
+        predictions = self._model.predict(np.array([state.one_hot()]))[0]
 
         # We only want valid moves
         predictions = predictions * valid_moves
 
-        return C4Move(np.argmax(predictions))
+        return C4Action(np.argmax(predictions))
 
     def stats(self):
         rewards = np.array(self.reward_memory)
         self.reward_memory = []
 
-        clipped = self.clipped_count / len(rewards) * 100
-        self.clipped_count = 0
         info_loss = self.info_loss
         self.info_loss = 0.
 
@@ -93,7 +116,7 @@ class C4Model(object):
         avg = np.average(rewards)
         stdev = np.std(rewards)
         med = np.median(rewards)
-        return min, max, avg, stdev, med, clipped, info_loss
+        return min, max, avg, stdev, med, info_loss
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)

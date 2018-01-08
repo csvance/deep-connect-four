@@ -11,21 +11,14 @@ class C4Team(Enum):
     BLACK = 2
 
 
-@unique
 class C4SlotState(Enum):
-    EMPTY = 0
-    RED = 1
-    BLACK = 2
-
-
-class C4TeamPerspectiveSlotState(Enum):
     EMPTY = 0
     SELF = 1
     ENEMY = 2
 
 
 @unique
-class C4Move(Enum):
+class C4Action(Enum):
     COLUMN1 = 0
     COLUMN2 = 1
     COLUMN3 = 2
@@ -36,41 +29,76 @@ class C4Move(Enum):
 
 
 @unique
-class C4ActionResult(Enum):
+class C4MoveResult(Enum):
     NONE = 0
     INVALID = 1
     VICTORY = 2
     TIE = 3
 
 
-class C4Game(object):
+class C4ActionResult(object):
+    def __init__(self, action: C4Action, result: C4MoveResult, old_state: 'C4State', new_state: 'C4State',
+                 reward: float, done: bool = False):
+        self.result = result
+        self.old_state = old_state
+        self.new_state = new_state
+        self.reward = reward
+        self.done = done
+        self.action = action
 
-    def __init__(self):
-        self.turn = None
-        self.state = None
-        self.winner = None
-        self.red_memories = None
-        self.black_memories = None
-        self.last_won_game_state = None
-        self.duplicate_game = None
-        self.normal_memories = deque(maxlen=2048)
-        self.win_loss_memories = deque(maxlen=128)
 
-        self.last_winner = None
-        self.win_streak = 0
+class C4State(object):
+    def __init__(self, state: np.ndarray = None):
+        if state is None:
+            self.state = np.zeros((6, 7), dtype=np.int8)
+        else:
+            self.state = state
 
-        self.reset()
+    def __iter__(self):
+        for row in self.state:
+            yield row
 
-    def reset(self):
-        self.turn = 0
-        self.state = np.zeros((6, 7), dtype=np.int8)
-        self.winner = None
-        self.duplicate_game = False
+    def copy(self):
+        return C4State(state=self.state.copy())
 
-        self.red_memories = []
-        self.black_memories = []
+    def move(self, move: C4Action) -> C4MoveResult:
 
-    def _check_winner(self, row: int, column: int) -> C4ActionResult:
+        column = move.value
+
+        # Put piece in first available row
+        for row in reversed(range(0, 6)):
+            if self.state[row][column] == C4SlotState.EMPTY.value:
+                self.state[row][column] = C4SlotState.SELF.value
+
+                if self._check_winner(row, column):
+                    return C4MoveResult.VICTORY
+
+                if np.sum(self.valid_moves()) == 0:
+                    return C4MoveResult.TIE
+
+                return C4MoveResult.NONE
+
+        if np.sum(self.valid_moves()) == 0:
+            return C4MoveResult.TIE
+
+        return C4MoveResult.INVALID
+
+    def valid_moves(self) -> np.ndarray:
+        valid_moves = []
+        for column in range(0, 7):
+            valid = False
+            for row in reversed(range(0, 6)):
+                if self.state[row][column] == C4SlotState.EMPTY.value:
+                    valid = True
+                    break
+            if valid:
+                valid_moves.append(1)
+            else:
+                valid_moves.append(0)
+
+        return np.array(valid_moves)
+
+    def _check_winner(self, row: int, column: int) -> bool:
 
         team = self.state[row][column]
 
@@ -80,7 +108,7 @@ class C4Game(object):
             if item == team:
                 in_a_row += 1
                 if in_a_row == 4:
-                    return C4ActionResult.VICTORY
+                    return True
             else:
                 in_a_row = 0
 
@@ -90,7 +118,7 @@ class C4Game(object):
             if item == team:
                 in_a_row += 1
                 if in_a_row == 4:
-                    return C4ActionResult.VICTORY
+                    return True
             else:
                 in_a_row = 0
 
@@ -114,7 +142,7 @@ class C4Game(object):
             if item == team:
                 in_a_row += 1
                 if in_a_row == 4:
-                    return C4ActionResult.VICTORY
+                    return True
             else:
                 in_a_row = 0
 
@@ -140,140 +168,128 @@ class C4Game(object):
             if item == team:
                 in_a_row += 1
                 if in_a_row == 4:
-                    return C4ActionResult.VICTORY
+                    return True
             else:
                 in_a_row = 0
 
             r -= 1
             c += 1
 
-        return C4ActionResult.NONE
+        return False
 
-    def reward(self):
-        if self.turn < 3:
-            return (self.turn + 1) / 4.
-        return 1 - (self.turn / 42.)
+    def next_turn(self):
+        np.place(self.state, self.state == C4SlotState.SELF.value, [127])
+        np.place(self.state, self.state == C4SlotState.ENEMY.value, [C4SlotState.SELF.value])
+        np.place(self.state, self.state == 127, [C4SlotState.ENEMY.value])
 
-    def _apply_action(self, row: int, column: int, team: C4Team) -> C4ActionResult:
-
-        old_state = self.perspective_state(team)
-        self.state[row][column] = team.value
-        self.turn += 1
-        new_state = self.perspective_state(team)
-
-        action_result = self._check_winner(row, column)
-
-        reward = 0.
-
-        if team == C4Team.RED:
-            self.red_memories.append((old_state, C4Move(column).value, reward, new_state))
-        elif team == C4Team.BLACK:
-            self.black_memories.append((old_state, C4Move(column).value, reward, new_state))
-
-        # If someone won store their data
-        if action_result == C4ActionResult.VICTORY:
-
-            if self.last_won_game_state is not None and np.array_equal(self.last_won_game_state, self.state):
-                self.duplicate_game = True
-                return action_result
-
-            self.last_won_game_state = self.state
-
-            if team == C4Team.RED:
-                winner_memories = self.red_memories
-                loser_memories = self.black_memories
-            elif team == C4Team.BLACK:
-                winner_memories = self.black_memories
-                loser_memories = self.red_memories
-
-            # Replay Winner
-            for item_idx, item in enumerate(winner_memories):
-                if item_idx == len(winner_memories) - 1:
-                    self.win_loss_memories.append((item[0], item[1], 1., item[3], True))
-                else:
-                    self.normal_memories.append((item[0], item[1], 0.1, item[3], False))
-
-            # Replay Loser
-            for item_idx, item in enumerate(loser_memories):
-                if item_idx == len(loser_memories) - 1:
-                    self.win_loss_memories.append((item[0], item[1], -1., item[3], True))
-                else:
-                    self.normal_memories.append((item[0], item[1], 0.1, item[3], False))
-
-            if team == self.last_winner:
-                self.win_streak += 1
-            else:
-                self.last_winner = team
-                self.win_streak = 0
-
-        return action_result
-
-    def action(self, move: C4Move, team: C4Team) -> C4ActionResult:
-
-        column = move.value
-
-        # Put piece in first available row
-        for row in reversed(range(0, 6)):
-            if self.state[row][column] == C4SlotState.EMPTY.value:
-                if self._apply_action(row, column, team) == C4ActionResult.VICTORY:
-                    self.winner = team
-                    return C4ActionResult.VICTORY
-                return C4ActionResult.NONE
-
-        if np.sum(self.valid_moves()) == 0:
-            return C4ActionResult.TIE
-        return C4ActionResult.INVALID
-
-    def valid_moves(self) -> np.ndarray:
-        valid_moves = []
-        for column in range(0, 7):
-            valid = False
-            for row in reversed(range(0, 6)):
-                if self.state[row][column] == C4SlotState.EMPTY.value:
-                    valid = True
-                    break
-            if valid:
-                valid_moves.append(1)
-            else:
-                valid_moves.append(0)
-
-        return np.array(valid_moves)
-
-    def perspective_state(self, perspective: C4Team) -> np.ndarray:
-
-        state = self.state.copy()
-
-        # TODO: measure and optimize this
-        if perspective == C4Team.BLACK:
-            np.place(state, state == C4Team.BLACK.value, [127])
-            np.place(state, state == C4Team.RED.value, [C4TeamPerspectiveSlotState.ENEMY.value])
-            np.place(state, state == 127, [C4TeamPerspectiveSlotState.SELF.value])
-        elif perspective == C4Team.RED:
-            np.place(state, state == C4Team.RED.value, [127])
-            np.place(state, state == C4Team.BLACK.value, [C4TeamPerspectiveSlotState.ENEMY.value])
-            np.place(state, state == 127, [C4TeamPerspectiveSlotState.SELF.value])
-
+    def one_hot(self) -> np.ndarray:
         one_hot_state = np.zeros((6, 7, 2), dtype=np.int8)
-        for row_idx, row in enumerate(state):
+        for row_idx, row in enumerate(self.state):
             for col_idx, column in enumerate(row):
-                if column == C4TeamPerspectiveSlotState.SELF.value:
+                if column == C4SlotState.SELF.value:
                     one_hot_state[row_idx][col_idx][0] = 1
-                elif column == C4TeamPerspectiveSlotState.ENEMY.value:
+                elif column == C4SlotState.ENEMY.value:
                     one_hot_state[row_idx][col_idx][1] = 1
 
         return one_hot_state
 
+
+class C4Game(object):
+
+    def __init__(self):
+        self.turn = 0
+        self.state = C4State()
+        self.winner = None
+
+        self.red_memories = []
+        self.black_memories = []
+
+        self.normal_memories = deque(maxlen=2048)
+        self.win_loss_memories = deque(maxlen=128)
+
+    def reset(self):
+        self.turn = 0
+        self.state = C4State()
+        self.winner = None
+
+        self.red_memories = []
+        self.black_memories = []
+
+    def action(self, action: C4Action) -> C4MoveResult:
+
+        old_state = self.state.copy()
+        move_result = self.state.move(action)
+        new_state = self.state
+
+        reward = None
+        done = None
+        if move_result == C4MoveResult.VICTORY:
+            reward = 1.
+            done = True
+        elif move_result == C4MoveResult.TIE:
+            reward = 0.2
+            done = True
+        elif move_result == C4MoveResult.INVALID:
+            reward = 0.
+            done = False
+        elif move_result == C4MoveResult.NONE:
+            reward = 0.1
+            done = False
+
+        action_result = C4ActionResult(action=action, result=move_result, old_state=old_state, new_state=new_state,
+                                       reward=reward, done=done)
+
+        if self.current_turn() == C4Team.RED:
+            self.red_memories.append(action_result)
+
+            if move_result == C4MoveResult.VICTORY:
+                self.black_memories[-1].reward = -1.
+                self.black_memories[-1].done = True
+
+                self.win_loss_memories.append(self.red_memories[-1])
+                self.win_loss_memories.append(self.black_memories[-1])
+
+                self.normal_memories.extend(self.red_memories[0:-1])
+                self.normal_memories.extend(self.black_memories[0:-1])
+
+        elif self.current_turn() == C4Team.BLACK:
+            self.black_memories.append(action_result)
+
+            if move_result == C4MoveResult.VICTORY:
+                self.red_memories[-1].reward = -1.
+                self.red_memories[-1].done = True
+
+                self.win_loss_memories.append(self.red_memories[-1])
+                self.win_loss_memories.append(self.black_memories[-1])
+
+                self.normal_memories.extend(self.red_memories[0:-1])
+                self.normal_memories.extend(self.black_memories[0:-1])
+
+        if move_result == C4MoveResult.NONE:
+            self.turn += 1
+            self.state.next_turn()
+
+        return move_result
+
     def display(self) -> str:
+
+        turn = self.current_turn()
 
         output = "(1)(2)(3)(4)(5)(6)(7)\n"
         for row in self.state:
             for slot in row:
                 if slot == C4SlotState.EMPTY.value:
                     output += "( )"
-                elif slot == C4SlotState.BLACK.value:
-                    output += "(B)"
-                elif slot == C4SlotState.RED.value:
-                    output += "(R)"
+                if turn == C4Team.RED:
+                    if slot == C4SlotState.SELF.value:
+                        output += "(R)"
+                    elif slot == C4SlotState.ENEMY.value:
+                        output += "(B)"
+                elif turn == C4Team.BLACK:
+                    if slot == C4SlotState.SELF.value:
+                        output += "(B)"
+                    elif slot == C4SlotState.ENEMY.value:
+                        output += "(R)"
             output += "\n"
         return output[:len(output) - 1]
 
@@ -283,7 +299,7 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def training_data(self, batch_size=128, win_loss_samples=16):
+    def sample(self, batch_size=128, win_loss_samples=16):
 
         win_loss_batch_size = win_loss_samples
         normal_batch_size = batch_size - win_loss_batch_size
@@ -304,6 +320,3 @@ class C4Game(object):
 
         # Shuffle
         return random.sample(combined_batch, len(combined_batch))
-
-    def is_duplicate_game(self):
-        return self.duplicate_game
