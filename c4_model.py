@@ -77,7 +77,7 @@ class C4Model(object):
             self.info_loss += abs(1 - target)
             target = 1.
         elif target < -1.:
-            self.info_loss += abs(1 - target)
+            self.info_loss += abs(-1 - target)
             target = -1.
 
         self.reward_memory.append(target)
