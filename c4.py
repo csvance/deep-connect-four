@@ -3,12 +3,45 @@ import os
 
 import numpy as np
 
-from c4_game import C4Game, C4MoveResult, C4Team
+from c4_game import C4Game, C4MoveResult, C4Team, C4Action
 from c4_model import C4Model
 
 
 def human_vs_ai(weights_file: str):
-    pass
+    c4 = C4Game()
+    c4ai = C4Model()
+    c4ai.load(weights_file)
+
+    print(c4.display())
+
+    while True:
+        current_team = c4.current_turn()
+        valid_moves = c4.state.valid_moves()
+
+        if current_team == C4Team.RED:
+            move = input("Move(%s): " % current_team)
+            if move == 'q':
+                return
+            move = C4Action(int(move) - 1)
+        elif current_team == C4Team.BLACK:
+            move = c4ai.predict(c4.state, valid_moves=valid_moves)
+
+        result = c4.action(move)
+
+        print(c4.display())
+        print("Result: %s" % result)
+
+        if result == C4MoveResult.VICTORY:
+            c4.reset()
+            print(c4.display())
+            continue
+        elif result == C4MoveResult.TIE:
+            c4.reset()
+            print(c4.display())
+            continue
+        elif result == C4MoveResult.INVALID:
+            print(c4.display())
+            continue
 
 
 def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float, games: int, gamma: float):
@@ -48,11 +81,11 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 loss_count += 1
                 loss_sum += history.history['loss'][0]
 
-            min, max, avg, stdev, med, info_loss = c4ai.stats()
+            min, max, avg, stdev, med, clipped = c4ai.stats()
 
             print("Red: %d Black %d Epsilon: %f Loss: %f" % (
                 red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
-            print("Avg: %f Med: %f Std: %f Destroyed: %f\nRange: [%f, %f]" % (avg, med, stdev, info_loss, min, max))
+            print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
             print(c4.display())
             print("")
 

@@ -16,7 +16,7 @@ class C4Model(object):
         self.epsilon_min = epsilon_min
         self.gamma = gamma
         self.reward_memory = []
-        self.info_loss = 0.
+        self.clipped = 0.
         if k % 2 != 0:
             raise ValueError('k must be an even number')
         self.k = k
@@ -74,10 +74,10 @@ class C4Model(object):
 
         # Clip reward
         if target > 1.:
-            self.info_loss += abs(1 - target)
+            self.clipped += abs(1 - target)
             target = 1.
         elif target < -1.:
-            self.info_loss += abs(-1 - target)
+            self.clipped += abs(-1 - target)
             target = -1.
 
         self.reward_memory.append(target)
@@ -108,15 +108,15 @@ class C4Model(object):
         rewards = np.array(self.reward_memory)
         self.reward_memory = []
 
-        info_loss = self.info_loss
-        self.info_loss = 0.
+        clipped = self.clipped
+        self.clipped = 0.
 
         min = np.min(rewards)
         max = np.max(rewards)
         avg = np.average(rewards)
         stdev = np.std(rewards)
         med = np.median(rewards)
-        return min, max, avg, stdev, med, info_loss
+        return min, max, avg, stdev, med, clipped
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)

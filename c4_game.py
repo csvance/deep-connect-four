@@ -320,3 +320,4 @@ class C4Game(object):
 
         # Shuffle
         return random.sample(combined_batch, len(combined_batch))
+
