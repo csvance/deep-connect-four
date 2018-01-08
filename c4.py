@@ -127,7 +127,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
 
                 print("Red: %d Black %d Epsilon: %f Loss: %f" % (
                     red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
-                print("Avg: %f Std: %f Med: %f \nClipped: %f%% Destroyed: %f" % (avg, stdev, med, clipped, info_loss))
+                print("Avg: %f Med: %f Std: %f\nClipped: %f%% Destroyed: %f" % (avg, med, stdev, clipped, info_loss))
                 print(c4.display())
                 print("")
 
