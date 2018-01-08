@@ -123,11 +123,11 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                     loss_count += 1
                     loss_sum += history.history['loss'][0]
 
-                min, max, avg, stdev = c4ai.stats()
+                min, max, avg, stdev, med, clipped, info_loss = c4ai.stats()
 
                 print("Red: %d Black %d Epsilon: %f Loss: %f" % (
                     red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
-                print("Min: %f Max: %f Avg: %f Std: %f" % (min, max, avg, stdev))
+                print("Avg: %f Std: %f Med: %f \nClipped: %f%% Destroyed: %f" % (avg, stdev, med, clipped, info_loss))
                 print(c4.display())
                 print("")
 

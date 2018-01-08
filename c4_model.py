@@ -4,7 +4,7 @@ from keras.backend import set_session
 from keras.layers import Dense, Flatten, Conv2D, Input, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
-from collections import deque
+
 
 from c4_game import C4Move
 
@@ -16,7 +16,9 @@ class C4Model(object):
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
         self.gamma = gamma
-        self.reward_memory = deque(maxlen=1000)
+        self.reward_memory = []
+        self.clipped_count = 0
+        self.info_loss = 0.
 
         input = Input(shape=(6, 7, 2))
 
@@ -43,9 +45,13 @@ class C4Model(object):
             target = reward + self.gamma * np.amax(self._model.predict(np.array([state_f]))[0])
             # Clip reward
             if target > 1.:
+                self.info_loss += abs(1 - target)
                 target = 1.
+                self.clipped_count += 1
             elif target < -1.:
+                self.info_loss += abs(1 - target)
                 target = -1.
+                self.clipped_count += 1
         else:
             target = reward
 
@@ -75,13 +81,19 @@ class C4Model(object):
 
     def stats(self):
         rewards = np.array(self.reward_memory)
+        self.reward_memory = []
+
+        clipped = self.clipped_count / len(rewards) * 100
+        self.clipped_count = 0
+        info_loss = self.info_loss
+        self.info_loss = 0.
 
         min = np.min(rewards)
         max = np.max(rewards)
         avg = np.average(rewards)
         stdev = np.std(rewards)
-
-        return min, max, avg, stdev
+        med = np.median(rewards)
+        return min, max, avg, stdev, med, clipped, info_loss
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)
