@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Conv2D, Input, LeakyReLU
+from keras.layers import Dense, Flatten, Input
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -17,15 +17,15 @@ class C4Model(object):
         self.gamma = gamma
         self.reward_memory = []
         self.clipped = 0.
-        if k % 2 != 0:
-            raise ValueError('k must be an even number')
         self.k = k
+        self.k_self = int(k / 2)
+        self.k_enemy = int(k / 2) + (k % 2)
 
-        input = Input(shape=(6, 7, 2))
+        input = Input(shape=(6, 7))
 
-        x = Conv2D(64, (4, 4), strides=1, activation='elu')(input)
+        x = Dense(2 * 6 * 7, activation='elu')(input)
+        x = Dense(2 * 6 * 7, activation='elu')(x)
         x = Flatten()(x)
-        x = Dense(3 * 4 * 32, activation='elu')(x)
 
         output = Dense(len(C4Action), activation='linear')(x)
 
@@ -53,7 +53,7 @@ class C4Model(object):
                 # Advance state one turn to change the perspective
                 new_state.invert_perspective()
 
-                prediction = self._model.predict(np.array([new_state.one_hot()]))[0]
+                prediction = self._model.predict(np.array([new_state.normalized()]))[0]
                 reward = np.amax(prediction)
                 action = C4Action(np.argmax(prediction))
 
@@ -68,7 +68,7 @@ class C4Model(object):
                 move_result = new_state.move(action)
 
             target = result.reward + self.gamma * \
-                     ((positive_reward_sum / (self.k / 2.)) - (negative_reward_sum / (self.k / 2.)))
+                     (positive_reward_sum / self.k_self - negative_reward_sum / self.k_enemy)
 
         else:
             target = result.reward
@@ -83,10 +83,10 @@ class C4Model(object):
 
         self.reward_memory.append(target)
 
-        target_f = self._model.predict(np.array([result.old_state.one_hot()]))
+        target_f = self._model.predict(np.array([result.old_state.normalized()]))
         target_f[0][result.action.value] = target
 
-        history = self._model.fit(np.array([result.old_state.one_hot()]), target_f, epochs=1, verbose=0)
+        history = self._model.fit(np.array([result.old_state.normalized()]), target_f, epochs=1, verbose=0)
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
         return history
 
@@ -98,7 +98,7 @@ class C4Model(object):
                     potential_moves.append(C4Action(idx))
             return np.random.choice(potential_moves)
 
-        predictions = self._model.predict(np.array([state.one_hot()]))[0]
+        predictions = self._model.predict(np.array([state.normalized()]))[0]
 
         # We only want valid moves
         predictions = predictions * valid_moves

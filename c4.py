@@ -108,7 +108,6 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 stats['std'] = stdev
                 stats['clipped'] = clipped
                 log_writer.writerow(stats)
-                log_file.flush()
 
                 print("Red: %d Black %d Epsilon: %f Loss: %f" % (
                     red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
@@ -118,6 +117,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
 
                 if game_no != 0 and game_no % games == 0:
                     print("Saving...")
+                    log_file.flush()
                     c4ai.save(weights_file)
                     print("Done.")
 

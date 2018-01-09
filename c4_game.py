@@ -196,6 +196,9 @@ class C4State(object):
 
         return one_hot_state
 
+    def normalized(self):
+        return self.state / 2.
+
 
 class C4Game(object):
 
