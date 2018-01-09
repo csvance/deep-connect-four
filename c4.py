@@ -101,7 +101,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 stats['red_wins'] = red_wins
                 stats['black_wins'] = black_wins
                 stats['epsilon'] = c4ai.epsilon
-                stats['game_length'] = c4.turn + 1
+                stats['game_length'] = (c4.turn + 1) / 42.
                 stats['loss'] = loss_sum / loss_count
                 stats['avg'] = avg
                 stats['med'] = med
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     parser.add_argument('mode')
     parser.add_argument('--weights-file', type=str, default="weights.h5")
     parser.add_argument('--epsilon', type=float, default=0.05)
-    parser.add_argument('--epsilon-decay', type=float, default=0.9999)
+    parser.add_argument('--epsilon-decay', type=float, default=0.99999)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-games', type=int, default=50)
     parser.add_argument('--gamma', type=float, default=0.9)

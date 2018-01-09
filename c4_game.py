@@ -210,8 +210,8 @@ class C4Game(object):
         self.last_victory = None
         self.duplicate = False
 
-        self.normal_memories = deque(maxlen=2000)
-        self.win_loss_memories = deque(maxlen=100)
+        self.normal_memories = deque(maxlen=1000)
+        self.win_loss_memories = deque(maxlen=20)
 
     def reset(self):
         self.turn = 0

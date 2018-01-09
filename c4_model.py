@@ -9,7 +9,7 @@ from c4_game import C4Action, C4ActionResult, C4State
 
 
 class C4Model(object):
-    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.9999, epsilon_min=0.05,
+    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.99999, epsilon_min=0.05,
                  gamma=0.9, learning_rate=0.001, k: int = 4):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
@@ -23,11 +23,9 @@ class C4Model(object):
 
         input = Input(shape=(6, 7, 2))
 
-        # x = Conv2D(64, (4, 4), strides=1, activation='relu')(input)
-        x = Dense(256, activation='elu')(input)
-        x = Dense(256, activation='elu')(x)
+        x = Conv2D(64, (4, 4), strides=1, activation='elu')(input)
         x = Flatten()(x)
-        # x = Dense(64 * 3 * 4, activation='relu')(x)
+        x = Dense(3 * 4 * 32, activation='elu')(x)
 
         output = Dense(len(C4Action), activation='linear')(x)
 
