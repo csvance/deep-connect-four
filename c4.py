@@ -45,19 +45,21 @@ def human_vs_ai(weights_file: str):
             continue
 
 
-def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float, games: int, gamma: float,
+def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_min: float, games: int,
+             gamma: float, gamma_ramp: float, gamma_max: float,
              k: int):
     game_no = 0
     red_wins = 0
     black_wins = 0
 
-    headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'avg', 'med', 'std', 'clipped']
+    headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'avg', 'med', 'std', 'clipped', 'gamma']
     log_file = open('log.csv', 'w')
     log_writer = csv.DictWriter(log_file, fieldnames=headers)
     log_writer.writeheader()
 
     c4 = C4Game()
-    c4ai = C4Model(epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min, gamma=gamma, k=k)
+    c4ai = C4Model(epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min,
+                   gamma=gamma, gamma_ramp=gamma_ramp, gamma_max=gamma_max, k=k)
     try:
         if weights_file is not None:
             c4ai.load(weights_file)
@@ -106,11 +108,12 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 stats['avg'] = avg
                 stats['med'] = med
                 stats['std'] = stdev
+                stats['gamma'] = c4ai.gamma
                 stats['clipped'] = clipped
                 log_writer.writerow(stats)
 
-                print("Red: %d Black %d Epsilon: %f Loss: %f" % (
-                    red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
+                print("Red: %d Black %d Epsilon: %f Gamma: %f Loss: %f" % (
+                    red_wins, black_wins, c4ai.epsilon, c4ai.gamma, loss_sum / loss_count))
                 print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
                 print(c4.display())
                 print("")
@@ -143,8 +146,10 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon-decay', type=float, default=0.99999)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-games', type=int, default=50)
-    parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--k', type=int, default=4)
+    parser.add_argument('--gamma', type=float, default=0.1)
+    parser.add_argument('--gamma-ramp', type=float, default=1.00001)
+    parser.add_argument('--gamma-max', type=float, default=0.9)
+    parser.add_argument('--k', type=int, default=5)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
@@ -153,7 +158,8 @@ if __name__ == '__main__':
 
     if args.mode == 'ava':
         ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_decay=args.epsilon_decay,
-                 epsilon_min=args.epsilon_min, games=args.training_games, gamma=args.gamma, k=args.k)
+                 epsilon_min=args.epsilon_min, games=args.training_games, gamma=args.gamma, gamma_ramp=args.gamma_ramp,
+                 gamma_max=args.gamma_max, k=args.k)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     else:

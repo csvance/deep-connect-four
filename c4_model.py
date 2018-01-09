@@ -10,11 +10,13 @@ from c4_game import C4Action, C4ActionResult, C4State
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.99999, epsilon_min=0.05,
-                 gamma=0.9, learning_rate=0.001, k: int = 4):
+                 gamma=0.9, gamma_ramp: float = 1.00001, gamma_max: float = 0.9, learning_rate=0.001, k: int = 5):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
         self.gamma = gamma
+        self.gamma_ramp = gamma_ramp
+        self.gamma_max = gamma_max
         self.reward_memory = []
         self.clipped = 0.
         self.k = k
@@ -88,6 +90,7 @@ class C4Model(object):
 
         history = self._model.fit(np.array([result.old_state.normalized()]), target_f, epochs=1, verbose=0)
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        self.gamma = min(self.gamma_max, self.gamma * self.gamma_ramp)
         return history
 
     def predict(self, state: C4State, valid_moves: np.ndarray) -> C4Action:
