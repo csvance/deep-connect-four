@@ -23,9 +23,11 @@ class C4Model(object):
 
         input = Input(shape=(6, 7, 2))
 
-        x = Conv2D(64, (4, 4), strides=1, activation='relu')(input)
+        # x = Conv2D(64, (4, 4), strides=1, activation='relu')(input)
+        x = Dense(2 * 6 * 7, activation='relu')(input)
+        x = Dense(2 * 6 * 7, activation='relu')(x)
         x = Flatten()(x)
-        x = Dense(64 * 3 * 4, activation='relu')(x)
+        # x = Dense(64 * 3 * 4, activation='relu')(x)
 
         output = Dense(len(C4Action), activation='linear')(x)
 

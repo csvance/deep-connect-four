@@ -3,8 +3,6 @@ from collections import deque
 from enum import Enum, unique
 
 import numpy as np
-import csv
-
 
 @unique
 class C4Team(Enum):
@@ -205,8 +203,8 @@ class C4Game(object):
         self.red_memories = []
         self.black_memories = []
 
-        self.normal_memories = deque(maxlen=2048)
-        self.win_loss_memories = deque(maxlen=128)
+        self.normal_memories = deque(maxlen=4095)
+        self.win_loss_memories = deque(maxlen=64)
 
     def reset(self):
         self.turn = 0
@@ -300,20 +298,18 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def sample(self, batch_size=128, win_loss_samples=16):
+    def sample(self, batch_size=128, win_loss_samples=8):
+
+        if len(self.normal_memories) < batch_size:
+            return None
+        if len(self.win_loss_memories) < win_loss_samples:
+            return None
 
         win_loss_batch_size = win_loss_samples
         normal_batch_size = batch_size - win_loss_batch_size
 
-        if normal_batch_size > len(self.normal_memories):
-            normal_memories = random.sample(self.normal_memories, len(self.normal_memories))
-        else:
-            normal_memories = random.sample(self.normal_memories, normal_batch_size)
-
-        if win_loss_batch_size > len(self.win_loss_memories):
-            win_loss_memories = random.sample(self.win_loss_memories, len(self.win_loss_memories))
-        else:
-            win_loss_memories = random.sample(self.win_loss_memories, win_loss_batch_size)
+        normal_memories = random.sample(self.normal_memories, normal_batch_size)
+        win_loss_memories = random.sample(self.win_loss_memories, win_loss_batch_size)
 
         combined_batch = []
         combined_batch.extend(normal_memories)

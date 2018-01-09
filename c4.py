@@ -19,12 +19,12 @@ def human_vs_ai(weights_file: str):
         current_team = c4.current_turn()
         valid_moves = c4.state.valid_moves()
 
-        if current_team == C4Team.RED:
+        if current_team == C4Team.BLACK:
             move = input("Move(%s): " % current_team)
             if move == 'q':
                 return
             move = C4Action(int(move) - 1)
-        elif current_team == C4Team.BLACK:
+        elif current_team == C4Team.RED:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
 
         result = c4.action(move)
@@ -80,38 +80,41 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
 
             # Train
             training_data = c4.sample()
-            loss_count = 0
-            loss_sum = 0.
-            for state in training_data:
-                history = c4ai.train(state)
-                loss_count += 1
-                loss_sum += history.history['loss'][0]
 
-            min, max, avg, stdev, med, clipped = c4ai.stats()
+            if training_data is not None:
 
-            stats = {}
-            stats['red_wins'] = red_wins
-            stats['black_wins'] = black_wins
-            stats['epsilon'] = c4ai.epsilon
-            stats['game_length'] = c4.turn + 1
-            stats['loss'] = loss_sum / loss_count
-            stats['avg'] = avg
-            stats['med'] = med
-            stats['std'] = stdev
-            stats['clipped'] = clipped
-            log_writer.writerow(stats)
-            log_file.flush()
+                loss_count = 0
+                loss_sum = 0.
+                for state in training_data:
+                    history = c4ai.train(state)
+                    loss_count += 1
+                    loss_sum += history.history['loss'][0]
 
-            print("Red: %d Black %d Epsilon: %f Loss: %f" % (
-                red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
-            print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
-            print(c4.display())
-            print("")
+                min, max, avg, stdev, med, clipped = c4ai.stats()
 
-            if game_no != 0 and game_no % games == 0:
-                print("Saving...")
-                c4ai.save(weights_file)
-                print("Done.")
+                stats = {}
+                stats['red_wins'] = red_wins
+                stats['black_wins'] = black_wins
+                stats['epsilon'] = c4ai.epsilon
+                stats['game_length'] = c4.turn + 1
+                stats['loss'] = loss_sum / loss_count
+                stats['avg'] = avg
+                stats['med'] = med
+                stats['std'] = stdev
+                stats['clipped'] = clipped
+                log_writer.writerow(stats)
+                log_file.flush()
+
+                print("Red: %d Black %d Epsilon: %f Loss: %f" % (
+                    red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
+                print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
+                print(c4.display())
+                print("")
+
+                if game_no != 0 and game_no % games == 0:
+                    print("Saving...")
+                    c4ai.save(weights_file)
+                    print("Done.")
 
             game_no += 1
 
