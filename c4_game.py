@@ -313,7 +313,7 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def sample(self, batch_size=128, win_loss_samples=8):
+    def sample(self, batch_size=21, win_loss_samples=2):
 
         if len(self.normal_memories) < batch_size:
             return None
