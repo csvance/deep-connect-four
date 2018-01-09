@@ -210,8 +210,8 @@ class C4Game(object):
         self.last_victory = None
         self.duplicate = False
 
-        self.normal_memories = deque(maxlen=1000)
-        self.win_loss_memories = deque(maxlen=20)
+        self.normal_memories = deque(maxlen=10000)
+        self.win_loss_memories = deque(maxlen=200)
 
     def reset(self):
         self.turn = 0
@@ -313,7 +313,7 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def sample(self, batch_size=32, win_loss_samples=2):
+    def sample(self, batch_size=128, win_loss_samples=8):
 
         if len(self.normal_memories) < batch_size:
             return None
