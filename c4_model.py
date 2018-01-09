@@ -10,7 +10,7 @@ from c4_game import C4Action, C4ActionResult, C4State
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_decay: float = 0.99999, epsilon_min=0.05,
-                 gamma=0.1, gamma_ramp: float = 1.00001, gamma_max: float = 0.9, learning_rate=0.001,
+                 gamma=0.1, gamma_ramp: float = 1.00001, gamma_max: float = 0.9, learning_rate=0.0025,
                  learning_rate_start=0.005, k: int = 5):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
@@ -25,6 +25,7 @@ class C4Model(object):
         self.k_enemy = int(k / 2) + (k % 2)
         self.learning_rate = learning_rate
         self.learning_rate_start = learning_rate_start
+        self.steps = 0
 
         input = Input(shape=(6, 7))
 
@@ -100,6 +101,7 @@ class C4Model(object):
                             + (1 - self.gamma / self.gamma_max) * self.learning_rate_start
 
         self.optimizer.lr = new_learning_rate
+        self.steps += 1
 
         return history
 
@@ -130,7 +132,7 @@ class C4Model(object):
         avg = np.average(rewards)
         stdev = np.std(rewards)
         med = np.median(rewards)
-        return min, max, avg, stdev, med, clipped
+        return min, max, avg, stdev, med, clipped, self.steps
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)

@@ -97,7 +97,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                     loss_count += 1
                     loss_sum += history.history['loss'][0]
 
-                min, max, avg, stdev, med, clipped = c4ai.stats()
+                min, max, avg, stdev, med, clipped, steps = c4ai.stats()
 
                 stats = {}
                 stats['red_wins'] = red_wins
@@ -112,8 +112,9 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 stats['clipped'] = clipped
                 log_writer.writerow(stats)
 
-                print("Red: %d Black %d Epsilon: %f Gamma: %f Loss: %f LR: %f" % (
-                    red_wins, black_wins, c4ai.epsilon, c4ai.gamma, loss_sum / loss_count, c4ai.optimizer.lr))
+                print("Red: %d Black %d Steps: %d" % (red_wins, black_wins, steps))
+                print("Epsilon: %f Gamma: %f Loss: %f, LR: %f" % (
+                c4ai.epsilon, c4ai.gamma, loss_sum / loss_count, c4ai.optimizer.lr))
                 print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
                 print(c4.display())
                 print("")
