@@ -57,6 +57,9 @@ class C4State(object):
         for row in self.state:
             yield row
 
+    def __cmp__(self, other):
+        return np.array_equal(self.state, other.state)
+
     def copy(self):
         return C4State(state=self.state.copy())
 
@@ -204,6 +207,9 @@ class C4Game(object):
         self.red_memories = []
         self.black_memories = []
 
+        self.last_victory = None
+        self.duplicate = False
+
         self.normal_memories = deque(maxlen=2000)
         self.win_loss_memories = deque(maxlen=100)
 
@@ -211,6 +217,7 @@ class C4Game(object):
         self.turn = 0
         self.state = C4State()
         self.winner = None
+        self.duplicate = False
 
         self.red_memories = []
         self.black_memories = []
@@ -224,6 +231,12 @@ class C4Game(object):
         reward = None
         done = None
         if move_result == C4MoveResult.VICTORY:
+            if self.last_victory is not None:
+                if np.array_equal(self.last_victory.state, self.state.state):
+                    self.duplicate = True
+                self.last_victory.next_turn()
+
+            self.last_victory = self.state.copy()
             reward = 1.
             done = True
         elif move_result == C4MoveResult.TIE:
@@ -239,31 +252,32 @@ class C4Game(object):
         action_result = C4ActionResult(action=action, result=move_result, old_state=old_state, new_state=new_state,
                                        reward=reward, done=done)
 
-        if self.current_turn() == C4Team.RED:
-            self.red_memories.append(action_result)
+        if not self.duplicate:
+            if self.current_turn() == C4Team.RED:
+                self.red_memories.append(action_result)
 
-            if move_result == C4MoveResult.VICTORY:
-                self.black_memories[-1].reward = -1.
-                self.black_memories[-1].done = True
+                if move_result == C4MoveResult.VICTORY:
+                    self.black_memories[-1].reward = -1.
+                    self.black_memories[-1].done = True
 
-                self.win_loss_memories.append(self.red_memories[-1])
-                self.win_loss_memories.append(self.black_memories[-1])
+                    self.win_loss_memories.append(self.red_memories[-1])
+                    self.win_loss_memories.append(self.black_memories[-1])
 
-                self.normal_memories.extend(self.red_memories[0:-1])
-                self.normal_memories.extend(self.black_memories[0:-1])
+                    self.normal_memories.extend(self.red_memories[0:-1])
+                    self.normal_memories.extend(self.black_memories[0:-1])
 
-        elif self.current_turn() == C4Team.BLACK:
-            self.black_memories.append(action_result)
+            elif self.current_turn() == C4Team.BLACK:
+                self.black_memories.append(action_result)
 
-            if move_result == C4MoveResult.VICTORY:
-                self.red_memories[-1].reward = -1.
-                self.red_memories[-1].done = True
+                if move_result == C4MoveResult.VICTORY:
+                    self.red_memories[-1].reward = -1.
+                    self.red_memories[-1].done = True
 
-                self.win_loss_memories.append(self.red_memories[-1])
-                self.win_loss_memories.append(self.black_memories[-1])
+                    self.win_loss_memories.append(self.red_memories[-1])
+                    self.win_loss_memories.append(self.black_memories[-1])
 
-                self.normal_memories.extend(self.red_memories[0:-1])
-                self.normal_memories.extend(self.black_memories[0:-1])
+                    self.normal_memories.extend(self.red_memories[0:-1])
+                    self.normal_memories.extend(self.black_memories[0:-1])
 
         if move_result == C4MoveResult.NONE:
             self.turn += 1

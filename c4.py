@@ -80,7 +80,11 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 black_wins += 1
 
             # Train
-            training_data = c4.sample()
+            if not c4.duplicate:
+                training_data = c4.sample()
+            else:
+                print("Duplicate.")
+                training_data = None
 
             if training_data is not None:
 
