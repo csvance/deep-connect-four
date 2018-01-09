@@ -234,6 +234,8 @@ class C4Game(object):
             if self.last_victory is not None:
                 if np.array_equal(self.last_victory.state, self.state.state):
                     self.duplicate = True
+                self.last_victory.invert_perspective()
+
             self.last_victory = self.state.copy()
             reward = 1.
             done = True
