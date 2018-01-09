@@ -2,6 +2,7 @@ import argparse
 import os
 
 import numpy as np
+import csv
 
 from c4_game import C4Game, C4MoveResult, C4Team, C4Action
 from c4_model import C4Model
@@ -49,6 +50,11 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
     red_wins = 0
     black_wins = 0
 
+    headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'avg', 'med', 'std', 'clipped']
+    log_file = open('log.csv', 'w')
+    log_writer = csv.DictWriter(log_file, fieldnames=headers)
+    log_writer.writeheader()
+
     c4 = C4Game()
     c4ai = C4Model(epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min, gamma=gamma)
     try:
@@ -83,6 +89,19 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
 
             min, max, avg, stdev, med, clipped = c4ai.stats()
 
+            stats = {}
+            stats['red_wins'] = red_wins
+            stats['black_wins'] = black_wins
+            stats['epsilon'] = c4ai.epsilon
+            stats['game_length'] = c4.turn + 1
+            stats['loss'] = loss_sum / loss_count
+            stats['avg'] = avg
+            stats['med'] = med
+            stats['std'] = stdev
+            stats['clipped'] = clipped
+            log_writer.writerow(stats)
+            log_file.flush()
+
             print("Red: %d Black %d Epsilon: %f Loss: %f" % (
                 red_wins, black_wins, c4ai.epsilon, loss_sum / loss_count))
             print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
@@ -116,7 +135,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon-decay', type=float, default=0.99999)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-games', type=int, default=20)
-    parser.add_argument('--gamma', type=float, default=0.75)
+    parser.add_argument('--gamma', type=float, default=0.5)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 

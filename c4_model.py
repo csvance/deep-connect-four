@@ -10,7 +10,7 @@ from c4_game import C4Action, C4ActionResult, C4State
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.99999, epsilon_min=0.05,
-                 gamma=0.75, learning_rate=0.001, k: int = 6):
+                 gamma=0.5, learning_rate=0.001, k: int = 4):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -59,7 +59,7 @@ class C4Model(object):
                     positive_reward_sum += reward
                 # Enemy Reward
                 else:
-                    negative_reward_sum -= reward
+                    negative_reward_sum += reward
 
                 # Apply the action
                 move_result = new_state.move(action)
@@ -67,8 +67,9 @@ class C4Model(object):
                 # Advance state one turn to change the perspective
                 new_state.next_turn()
 
-            target = result.reward + self.gamma * (
-                    (positive_reward_sum / (self.k / 2.)) + (negative_reward_sum / (self.k / 2.)))
+            negative_reward_sum = 0
+            target = result.reward + self.gamma * \
+                     ((positive_reward_sum / (self.k / 2.)) - (negative_reward_sum / (self.k / 2.)))
         else:
             target = result.reward
 
