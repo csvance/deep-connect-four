@@ -112,8 +112,8 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_decay: float, epsilon_mi
                 stats['clipped'] = clipped
                 log_writer.writerow(stats)
 
-                print("Red: %d Black %d Epsilon: %f Gamma: %f Loss: %f" % (
-                    red_wins, black_wins, c4ai.epsilon, c4ai.gamma, loss_sum / loss_count))
+                print("Red: %d Black %d Epsilon: %f Gamma: %f Loss: %f LR: %f" % (
+                    red_wins, black_wins, c4ai.epsilon, c4ai.gamma, loss_sum / loss_count, c4ai.optimizer.lr))
                 print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
                 print(c4.display())
                 print("")
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode')
     parser.add_argument('--weights-file', type=str, default="weights.h5")
-    parser.add_argument('--epsilon', type=float, default=0.05)
+    parser.add_argument('--epsilon', type=float, default=1.)
     parser.add_argument('--epsilon-decay', type=float, default=0.99999)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-games', type=int, default=50)

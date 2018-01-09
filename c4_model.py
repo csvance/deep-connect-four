@@ -9,8 +9,9 @@ from c4_game import C4Action, C4ActionResult, C4State
 
 
 class C4Model(object):
-    def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.99999, epsilon_min=0.05,
-                 gamma=0.9, gamma_ramp: float = 1.00001, gamma_max: float = 0.9, learning_rate=0.001, k: int = 5):
+    def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_decay: float = 0.99999, epsilon_min=0.05,
+                 gamma=0.1, gamma_ramp: float = 1.00001, gamma_max: float = 0.9, learning_rate=0.001,
+                 learning_rate_start=0.005, k: int = 5):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -22,6 +23,8 @@ class C4Model(object):
         self.k = k
         self.k_self = int(k / 2)
         self.k_enemy = int(k / 2) + (k % 2)
+        self.learning_rate = learning_rate
+        self.learning_rate_start = learning_rate_start
 
         input = Input(shape=(6, 7))
 
@@ -32,7 +35,8 @@ class C4Model(object):
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)
-        model.compile(optimizer=Adam(lr=learning_rate), loss='mse')
+        self.optimizer = Adam(lr=learning_rate_start)
+        model.compile(optimizer=self.optimizer, loss='mse')
         model.summary()
         self._model = model
 
@@ -91,6 +95,12 @@ class C4Model(object):
         history = self._model.fit(np.array([result.old_state.normalized()]), target_f, epochs=1, verbose=0)
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
         self.gamma = min(self.gamma_max, self.gamma * self.gamma_ramp)
+
+        new_learning_rate = (self.gamma / self.gamma_max) * self.learning_rate \
+                            + (1 - self.gamma / self.gamma_max) * self.learning_rate_start
+
+        self.optimizer.lr = new_learning_rate
+
         return history
 
     def predict(self, state: C4State, valid_moves: np.ndarray) -> C4Action:
