@@ -52,6 +52,9 @@ class C4Model(object):
             new_state = result.new_state.copy()
             for k in range(0, self.k):
 
+                # Advance state one turn to change the perspective
+                new_state.invert_perspective()
+
                 prediction = self._model.predict(np.array([new_state.one_hot()]))[0]
                 reward = np.amax(prediction)
                 action = C4Action(np.argmax(prediction))
@@ -65,9 +68,6 @@ class C4Model(object):
 
                 # Apply the action
                 move_result = new_state.move(action)
-
-                # Advance state one turn to change the perspective
-                new_state.next_turn()
 
             target = result.reward + self.gamma * \
                      ((positive_reward_sum / (self.k / 2.)) - (negative_reward_sum / (self.k / 2.)))

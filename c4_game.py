@@ -179,7 +179,7 @@ class C4State(object):
 
         return False
 
-    def next_turn(self):
+    def invert_perspective(self):
         np.place(self.state, self.state == C4SlotState.SELF.value, [127])
         np.place(self.state, self.state == C4SlotState.ENEMY.value, [C4SlotState.SELF.value])
         np.place(self.state, self.state == 127, [C4SlotState.ENEMY.value])
@@ -234,8 +234,6 @@ class C4Game(object):
             if self.last_victory is not None:
                 if np.array_equal(self.last_victory.state, self.state.state):
                     self.duplicate = True
-                self.last_victory.next_turn()
-
             self.last_victory = self.state.copy()
             reward = 1.
             done = True
@@ -281,7 +279,7 @@ class C4Game(object):
 
         if move_result == C4MoveResult.NONE:
             self.turn += 1
-            self.state.next_turn()
+            self.state.invert_perspective()
 
         return move_result
 
