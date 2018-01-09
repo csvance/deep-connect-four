@@ -10,7 +10,7 @@ from c4_game import C4Action, C4ActionResult, C4State
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 0., epsilon_decay: float = 0.99999, epsilon_min=0.05,
-                 gamma=0.5, learning_rate=0.001, k: int = 4):
+                 gamma=0.5, learning_rate=0.001, k: int = 10):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -24,8 +24,8 @@ class C4Model(object):
         input = Input(shape=(6, 7, 2))
 
         # x = Conv2D(64, (4, 4), strides=1, activation='relu')(input)
-        x = Dense(2 * 6 * 7, activation='relu')(input)
-        x = Dense(2 * 6 * 7, activation='relu')(x)
+        x = Dense(256, activation='relu')(input)
+        x = Dense(256, activation='relu')(x)
         x = Flatten()(x)
         # x = Dense(64 * 3 * 4, activation='relu')(x)
 
@@ -56,12 +56,12 @@ class C4Model(object):
                 reward = np.amax(prediction)
                 action = C4Action(np.argmax(prediction))
 
-                # Self Reward
+                # Enemy reward - new_state is the enemies state to act when k is even
                 if k % 2 == 0:
-                    positive_reward_sum += reward
-                # Enemy Reward
-                else:
                     negative_reward_sum += reward
+                # Self Reward - new state is our state to act on when k is odd
+                else:
+                    positive_reward_sum += reward
 
                 # Apply the action
                 move_result = new_state.move(action)
@@ -69,7 +69,6 @@ class C4Model(object):
                 # Advance state one turn to change the perspective
                 new_state.next_turn()
 
-            negative_reward_sum = 0
             target = result.reward + self.gamma * \
                      ((positive_reward_sum / (self.k / 2.)) - (negative_reward_sum / (self.k / 2.)))
         else:

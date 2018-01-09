@@ -180,6 +180,7 @@ class C4State(object):
         np.place(self.state, self.state == C4SlotState.SELF.value, [127])
         np.place(self.state, self.state == C4SlotState.ENEMY.value, [C4SlotState.SELF.value])
         np.place(self.state, self.state == 127, [C4SlotState.ENEMY.value])
+        return
 
     def one_hot(self) -> np.ndarray:
         one_hot_state = np.zeros((6, 7, 2), dtype=np.int8)
@@ -203,8 +204,8 @@ class C4Game(object):
         self.red_memories = []
         self.black_memories = []
 
-        self.normal_memories = deque(maxlen=4095)
-        self.win_loss_memories = deque(maxlen=64)
+        self.normal_memories = deque(maxlen=2000)
+        self.win_loss_memories = deque(maxlen=100)
 
     def reset(self):
         self.turn = 0
@@ -298,7 +299,7 @@ class C4Game(object):
         else:
             return C4Team.BLACK
 
-    def sample(self, batch_size=128, win_loss_samples=8):
+    def sample(self, batch_size=32, win_loss_samples=2):
 
         if len(self.normal_memories) < batch_size:
             return None
