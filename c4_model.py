@@ -3,7 +3,7 @@ from enum import Enum, unique
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input
+from keras.layers import Dense, Flatten, Input, Conv2D
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -59,12 +59,11 @@ class C4Model(object):
         self.learning_rate_start = learning_rate_start
         self.steps = 0
 
-        input = Input(shape=(6, 7))
+        input = Input(shape=(6, 7, 1))
 
-        x = Dense(2 * 6 * 7, activation='elu')(input)
-        x = Dense(2 * 6 * 7, activation='elu')(x)
+        x = Conv2D(100, (4, 4), activation='elu')(input)
+        x = Dense(512, activation='elu')(x)
         x = Flatten()(x)
-
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)

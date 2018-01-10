@@ -10,7 +10,7 @@ from c4_model import C4Model
 
 def human_vs_ai(weights_file: str):
     c4 = C4Game()
-    c4ai = C4Model()
+    c4ai = C4Model(epsilon=0., epsilon_min=0.)
     c4ai.load(weights_file)
 
     print(c4.display())

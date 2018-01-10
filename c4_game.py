@@ -197,7 +197,10 @@ class C4State(object):
         return one_hot_state
 
     def normalized(self):
-        return self.state / 2.
+        ret_state = self.state.copy()
+        ret_state = ret_state.reshape((6, 7, 1))
+        return ret_state / 2.
+
 
 
 class C4Game(object):
