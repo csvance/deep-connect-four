@@ -1,9 +1,7 @@
-from enum import Enum, unique
-
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, Conv2D, Convolution2D
+from keras.layers import Dense, Flatten, Input, Conv2D
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -44,7 +42,7 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 100000, epsilon_min=0.05,
-                 gamma=0.2, gamma_steps: int = 1000000, gamma_max: float = 0.99, learning_rate=0.001,
+                 gamma=0.2, gamma_steps: int = 1000000, gamma_max: float = 0.95, learning_rate=0.001,
                  learning_rate_start=0.0025, k: int = 5):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
@@ -105,7 +103,7 @@ class C4Model(object):
                 move_result = new_state.move(action)
 
             target = result.reward + self.gamma.value * \
-                     (positive_reward_sum / self.k_self - negative_reward_sum / self.k_enemy)
+                     (positive_reward_sum / self.k_self - 0.75 * negative_reward_sum / self.k_enemy)
 
         else:
             target = result.reward

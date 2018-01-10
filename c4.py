@@ -149,7 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--training-games', type=int, default=50)
     parser.add_argument('--gamma', type=float, default=0.2)
     parser.add_argument('--gamma-steps', type=int, default=1000000)
-    parser.add_argument('--gamma-max', type=float, default=0.99)
+    parser.add_argument('--gamma-max', type=float, default=0.95)
     parser.add_argument('--k', type=int, default=5)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
