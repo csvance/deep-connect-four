@@ -234,6 +234,15 @@ class C4Game(object):
         move_result = self.state.move(action)
         new_state = self.state
 
+        # Add some noise to the reward
+        def r_noise(r: float):
+            if r != 1. and r != -1.:
+                return r + np.random.normal(0.0000, 0.00001, 1)[0]
+            elif r == 1.:
+                return r - np.random.normal(0.0001, 0.00001, 1)[0]
+            elif r == -1.:
+                return r + np.random.normal(0.0001, 0.00001, 1)[0]
+
         reward = None
         done = None
         if move_result == C4MoveResult.VICTORY:
@@ -243,16 +252,16 @@ class C4Game(object):
                 self.last_victory.invert_perspective()
 
             self.last_victory = self.state.copy()
-            reward = 1.
+            reward = r_noise(1.)
             done = True
         elif move_result == C4MoveResult.TIE:
-            reward = 0.2
+            reward = r_noise(0.)
             done = True
         elif move_result == C4MoveResult.INVALID:
-            reward = 0.
+            reward = r_noise(0.)
             done = False
         elif move_result == C4MoveResult.NONE:
-            reward = 0.1
+            reward = r_noise(0.1)
             done = False
 
         action_result = C4ActionResult(action=action, result=move_result, old_state=old_state, new_state=new_state,
@@ -263,7 +272,7 @@ class C4Game(object):
                 self.red_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.black_memories[-1].reward = -1.
+                    self.black_memories[-1].reward = r_noise(-1.)
                     self.black_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])
@@ -276,7 +285,7 @@ class C4Game(object):
                 self.black_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.red_memories[-1].reward = -1.
+                    self.red_memories[-1].reward = r_noise(-1.)
                     self.red_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])

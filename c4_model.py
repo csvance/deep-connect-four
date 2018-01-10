@@ -44,8 +44,8 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 100000, epsilon_min=0.05,
-                 gamma=0.0, gamma_steps: int = 1000000, gamma_max: float = 0.9, learning_rate=0.0025,
-                 learning_rate_start=0.005, k: int = 5):
+                 gamma=0.2, gamma_steps: int = 1000000, gamma_max: float = 0.99, learning_rate=0.001,
+                 learning_rate_start=0.0025, k: int = 5):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
         self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
@@ -129,10 +129,13 @@ class C4Model(object):
         self.gamma.step(1)
 
         # Calculate learning rate based on gamma
-        new_learning_rate = (1. - abs(self.gamma.end - self.gamma.value) / abs(
-            self.gamma.start - self.gamma.end)) * self.learning_rate + \
-                            (abs(self.gamma.end - self.gamma.value) / abs(
-                                self.gamma.start - self.gamma.end)) * self.learning_rate_start
+        if self.gamma.start != self.gamma.end:
+            new_learning_rate = (1. - abs(self.gamma.end - self.gamma.value) / abs(
+                self.gamma.start - self.gamma.end)) * self.learning_rate + \
+                                (abs(self.gamma.end - self.gamma.value) / abs(
+                                    self.gamma.start - self.gamma.end)) * self.learning_rate_start
+        else:
+            new_learning_rate = self.learning_rate
 
         self.optimizer.lr = new_learning_rate
         self.steps += 1
