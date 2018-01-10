@@ -1,3 +1,5 @@
+from enum import Enum, unique
+
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
@@ -8,16 +10,46 @@ from keras.optimizers import Adam
 from c4_game import C4Action, C4ActionResult, C4State
 
 
+class Ramp(object):
+    def __init__(self, start: float, end: float, steps: int, delay: int = 0):
+        self.value = start
+        self.start = start
+        self.end = end
+        self.steps = steps
+        self.delay = delay
+
+        self._steps_processed = 0
+
+    def step(self, steps: int) -> float:
+        self._steps_processed += steps
+
+        if self._steps_processed < self.delay:
+            return self.value
+
+        ramp_vertical = self.end - self.start
+        ramp_horizontal = self.steps
+
+        m = ramp_vertical / ramp_horizontal
+        x = (self._steps_processed - self.delay)
+        b = self.start
+        y = m * x + b
+
+        if self.start < self.end:
+            self.value = min(self.end, y)
+        elif self.start > self.end:
+            self.value = max(self.end, y)
+
+        return self.value
+
+
 class C4Model(object):
-    def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_decay: float = 0.99999, epsilon_min=0.05,
-                 gamma=0.1, gamma_ramp: float = 1.00001, gamma_max: float = 0.9, learning_rate=0.0025,
+    def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 100000, epsilon_min=0.05,
+                 gamma=0.0, gamma_steps: int = 1000000, gamma_max: float = 0.9, learning_rate=0.0025,
                  learning_rate_start=0.005, k: int = 5):
-        self.epsilon = epsilon
-        self.epsilon_decay = epsilon_decay
-        self.epsilon_min = epsilon_min
-        self.gamma = gamma
-        self.gamma_ramp = gamma_ramp
-        self.gamma_max = gamma_max
+
+        self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
+        self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps, delay=self.epsilon.steps)
+
         self.reward_memory = []
         self.clipped = 0.
         self.k = k
@@ -74,7 +106,7 @@ class C4Model(object):
                 # Apply the action
                 move_result = new_state.move(action)
 
-            target = result.reward + self.gamma * \
+            target = result.reward + self.gamma.value * \
                      (positive_reward_sum / self.k_self - negative_reward_sum / self.k_enemy)
 
         else:
@@ -94,11 +126,13 @@ class C4Model(object):
         target_f[0][result.action.value] = target
 
         history = self._model.fit(np.array([result.old_state.normalized()]), target_f, epochs=1, verbose=0)
-        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
-        self.gamma = min(self.gamma_max, self.gamma * self.gamma_ramp)
 
-        new_learning_rate = (self.gamma / self.gamma_max) * self.learning_rate \
-                            + (1 - self.gamma / self.gamma_max) * self.learning_rate_start
+        self.epsilon.step(1)
+        self.gamma.step(1)
+
+        # Calculate learning rate based on gamma
+        new_learning_rate = (self.gamma.value / self.gamma.end) * self.learning_rate \
+                            + (1 - self.gamma.value / self.gamma.end) * self.learning_rate_start
 
         self.optimizer.lr = new_learning_rate
         self.steps += 1
@@ -106,7 +140,7 @@ class C4Model(object):
         return history
 
     def predict(self, state: C4State, valid_moves: np.ndarray) -> C4Action:
-        if np.random.rand() <= self.epsilon:
+        if np.random.rand() <= self.epsilon.value:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
                 if valid_moves[idx] == 1:
