@@ -3,7 +3,7 @@ from enum import Enum, unique
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, Conv2D
+from keras.layers import Dense, Flatten, Input, Conv2D, Convolution2D
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -48,7 +48,7 @@ class C4Model(object):
                  learning_rate_start=0.005, k: int = 5):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
-        self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps, delay=self.epsilon.steps)
+        self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
 
         self.reward_memory = []
         self.clipped = 0.
@@ -60,10 +60,9 @@ class C4Model(object):
         self.steps = 0
 
         input = Input(shape=(6, 7, 1))
-
-        x = Conv2D(100, (4, 4), activation='elu')(input)
-        x = Dense(512, activation='elu')(x)
+        x = Conv2D(64, (4, 4), activation='relu')(input)
         x = Flatten()(x)
+        x = Dense(512, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)
@@ -130,8 +129,10 @@ class C4Model(object):
         self.gamma.step(1)
 
         # Calculate learning rate based on gamma
-        new_learning_rate = (self.gamma.value / self.gamma.end) * self.learning_rate \
-                            + (1 - self.gamma.value / self.gamma.end) * self.learning_rate_start
+        new_learning_rate = (1. - abs(self.gamma.end - self.gamma.value) / abs(
+            self.gamma.start - self.gamma.end)) * self.learning_rate + \
+                            (abs(self.gamma.end - self.gamma.value) / abs(
+                                self.gamma.start - self.gamma.end)) * self.learning_rate_start
 
         self.optimizer.lr = new_learning_rate
         self.steps += 1
