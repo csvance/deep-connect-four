@@ -77,7 +77,7 @@ class C4Model(object):
         self._model = model
 
         if use_gpu:
-            config = tf.ConfigProto(log_device_placement=False)
+            config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             set_session(tf.Session(config=config))
 
@@ -92,7 +92,7 @@ class C4Model(object):
             new_state = result.new_state.copy()
             for k in range(0, self.k):
 
-                # Advance state one turn to change the perspective
+                # Invert state perspective to match the current agent
                 new_state.invert_perspective()
 
                 prediction = self._model.predict(new_state.state_representation())[0]
@@ -106,7 +106,7 @@ class C4Model(object):
                 else:
                     positive_reward_sum += reward
 
-                # Apply the action
+                # Apply the action, advance the state
                 move_result = new_state.move(action)
 
             target = result.reward + self.gamma.value * \

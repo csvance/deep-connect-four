@@ -186,7 +186,6 @@ class C4State(object):
         np.place(self.state, self.state == C4SlotState.SELF.value, [127])
         np.place(self.state, self.state == C4SlotState.ENEMY.value, [C4SlotState.SELF.value])
         np.place(self.state, self.state == 127, [C4SlotState.ENEMY.value])
-        return
 
     def move_values(self) -> np.ndarray:
 
@@ -195,7 +194,7 @@ class C4State(object):
             enemy_in_a_row = 0.
 
             r_end = False
-            for i in vector:
+            for idx, i in enumerate(vector):
                 if i == C4SlotState.ENEMY.value:
                     if not r_end:
                         enemy_in_a_row += 1.
@@ -207,7 +206,7 @@ class C4State(object):
                     r_end = True
 
             r_end = False
-            for i in vector:
+            for idx, i in enumerate(vector):
                 if i == C4SlotState.SELF.value:
                     if not r_end:
                         self_in_a_row += 1.
