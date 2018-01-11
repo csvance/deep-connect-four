@@ -125,8 +125,6 @@ class C4State(object):
             else:
                 in_a_row = 0
 
-        return False
-
         # Diagonal
         # Find border cell
         r = row
@@ -189,6 +187,8 @@ class C4State(object):
 
     def move_values(self) -> np.ndarray:
 
+        max_score = 9. + 12.
+        
         def move_value(vector):
             self_in_a_row = 0.
             enemy_in_a_row = 0.
@@ -218,11 +218,18 @@ class C4State(object):
                     r_end = True
 
             if self_in_a_row == 3:
-                self_in_a_row = 9
+                self_in_a_row = max_score
             if enemy_in_a_row == 3:
-                enemy_in_a_row = 9
+                enemy_in_a_row = max_score / 2.
 
             return self_in_a_row, enemy_in_a_row
+
+        def valid_index(row: int, col: int) -> bool:
+            if col < 0 or col > 6:
+                return False
+            if row < 0 or row > 5:
+                return False
+            return True
 
         height = np.array(self.column_height(), dtype=np.int8)
         height = 5 - height
@@ -237,35 +244,71 @@ class C4State(object):
             # Left
             v = self.state[height[col_index]][max(0, col_index - 3):col_index][::-1]
             s, e = move_value(v)
-            self_value = min(self_value + s, 9.)
-            enemy_value = min(enemy_value + e, 9.)
+            self_value = min(self_value + s, max_score)
+            enemy_value = min(enemy_value + e, max_score)
 
             # Right
             v = self.state[height[col_index]][col_index + 1:col_index + 4]
             s, e = move_value(v)
-            self_value = min(self_value + s, 9.)
-            enemy_value = min(enemy_value + e, 9.)
+            self_value = min(self_value + s, max_score)
+            enemy_value = min(enemy_value + e, max_score)
 
             # Down
             v = self.state[:, col_index][height[col_index] + 1:height[col_index] + 4]
             s, e = move_value(v)
-            self_value = min(self_value + s, 9.)
-            enemy_value = min(enemy_value + e, 9.)
+            self_value = min(self_value + s, max_score)
+            enemy_value = min(enemy_value + e, max_score)
 
             # Up Right
+            start_row = height[col_index]
+            v = []
+            for i in range(1, 4):
+                if not valid_index(col_index + i, start_row + i):
+                    break
+                v.append(self.state[col_index + i][start_row + i])
+            s, e = move_value(v)
+            self_value = min(self_value + s, max_score)
+            enemy_value = min(enemy_value + e, max_score)
 
             # Down Right
+            start_row = height[col_index]
+            v = []
+            for i in range(1, 4):
+                if not valid_index(start_row - i, col_index + i):
+                    break
+                v.append(self.state[start_row - i][col_index + i])
+            s, e = move_value(v)
+            self_value = min(self_value + s, max_score)
+            enemy_value = min(enemy_value + e, max_score)
 
             # Up Left
+            start_row = height[col_index]
+            v = []
+            for i in range(1, 4):
+                if not valid_index(start_row + i, col_index - i):
+                    break
+                v.append(self.state[start_row + i][col_index - i])
+            s, e = move_value(v)
+            self_value = min(self_value + s, max_score)
+            enemy_value = min(enemy_value + e, max_score)
 
             # Down Left
+            start_row = height[col_index]
+            v = []
+            for i in range(1, 4):
+                if not valid_index(start_row - i, col_index - i):
+                    break
+                v.append(self.state[start_row - i][col_index - i])
+            s, e = move_value(v)
+            self_value = min(self_value + s, max_score)
+            enemy_value = min(enemy_value + e, max_score)
 
             self_values.append(self_value)
             enemy_values.append(enemy_value)
 
         ret_list = np.array([self_values, enemy_values]).reshape((7, 2))
 
-        return np.array([ret_list]) / 9.
+        return np.array([ret_list]) / max_score
 
     def column_height(self) -> list:
         heights = []

@@ -7,7 +7,7 @@ The model is still in active development and testing. The idea is it should be a
 ## Training
  
  Training is done in AI vs AI mode:
- ```python connect_four.py ava```
+ ```python c4.py ava```
  
  You can play the AI in Human vs AI mode:
- ```python connect_four.py hva```
+ ```python c4.py hva```
