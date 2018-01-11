@@ -191,7 +191,7 @@ class C4State(object):
             self_in_a_row = 0.
             self_seperated = 0.
             enemy_in_a_row = 0.
-            enemey_seperated = 0.
+            enemy_seperated = 0.
 
             r_end = False
             for idx, i in enumerate(vector):
@@ -199,7 +199,7 @@ class C4State(object):
                     if not r_end:
                         enemy_in_a_row += 1.
                     else:
-                        enemey_seperated += 1.
+                        enemy_seperated += 1.
                 elif i == C4SlotState.SELF.value:
                     break
                 else:
@@ -217,7 +217,7 @@ class C4State(object):
                 else:
                     r_end = True
 
-            return self_in_a_row, self_seperated, enemy_in_a_row, enemey_seperated
+            return self_in_a_row, self_seperated, enemy_in_a_row, enemy_seperated
 
         def valid_index(row: int, col: int) -> bool:
             if col < 0 or col > 6:
@@ -233,9 +233,6 @@ class C4State(object):
         enemy_values = []
 
         for col_index in range(0, 7):
-            self_value = 0
-            enemy_value = 0
-
             # Left
             v = self.state[height[col_index]][max(0, col_index - 3):col_index][::-1]
             ss_left, s_left, ee_left, e_left = move_value(v)

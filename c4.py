@@ -163,10 +163,14 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                 print(c4.display())
                 print("")
 
-                if game_no != 0 and game_no % games == 0:
+                if (game_no != 0 and game_no % 50 == 0) or game_no >= games:
                     print("Saving...")
                     log_file.flush()
                     c4ai.save(weights_file)
+
+                    if game_no >= games:
+                        print("Finished %d games." % games)
+                        return
                     print("Done.")
 
             game_no += 1
