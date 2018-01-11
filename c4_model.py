@@ -58,7 +58,7 @@ class C4Model(object):
         self.steps = 0
 
         input_heights = Input(shape=(7,))
-        input_scores = Input(shape=(7, 14, 2))
+        input_scores = Input(shape=(7, 8, 2))
 
         x_1 = input_heights
 

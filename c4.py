@@ -89,7 +89,7 @@ def human_vs_ai(weights_file: str):
             continue
 
 
-def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min: float, steps: int,
+def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min: float, training_steps: int,
              gamma: float, gamma_steps: int, gamma_max: float,
              k: int):
     game_no = 0
@@ -163,12 +163,12 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                 print(c4.display())
                 print("")
 
-                if (game_no != 0 and game_no % 50 == 0) or c4ai.steps >= steps:
+                if (game_no != 0 and game_no % 50 == 0) or c4ai.steps >= training_steps:
                     print("Saving...")
                     log_file.flush()
                     c4ai.save(weights_file)
 
-                    if c4ai.steps >= steps:
+                    if c4ai.steps >= training_steps:
                         print("Ran %d steps." % steps)
                         return
                     print("Done.")
@@ -207,7 +207,7 @@ if __name__ == '__main__':
 
     if args.mode == 'ava':
         ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_steps=args.epsilon_steps,
-                 epsilon_min=args.epsilon_min, steps=args.training_steps, gamma=args.gamma,
+                 epsilon_min=args.epsilon_min, training_steps=args.training_steps, gamma=args.gamma,
                  gamma_steps=args.gamma_steps,
                  gamma_max=args.gamma_max, k=args.k)
     elif args.mode == 'hva':

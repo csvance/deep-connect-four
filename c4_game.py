@@ -282,18 +282,22 @@ class C4State(object):
                 v.append(self.state[start_row - i][col_index - i])
             ss_down_left, s_down_left, ee_down_left, e_down_left = move_value(v)
 
-            ss = [ss_down, ss_right, ss_up_right, ss_down_right, ss_left, ss_up_left, ss_down_left]
-            s = [s_down, s_right, s_up_right, s_down_right, s_left, s_up_left, s_down_left]
-            ee = [ee_down, ee_right, ee_up_right, ee_down_right, ee_left, ee_up_left, ee_down_left]
-            e = [e_down, e_right, e_up_right, e_down_right, e_left, e_up_left, e_down_left]
+            ss = [ss_down, min(ss_right + ss_left, 3.), min(ss_up_right + ss_down_left, 3.),
+                  min(ss_down_right + ss_up_left, 3.)]
+            s = [s_down, min(s_right + s_left, 3.), min(s_up_right + s_down_left, 3.),
+                 min(s_down_right + s_up_left, 3.)]
+            ee = [ee_down, min(ee_right + ee_left, 3.), min(ee_up_right + ee_down_left, 3.),
+                  min(ee_down_right + ee_up_left, 3.)]
+            e = [e_down, min(e_right + e_left, 3.), min(e_up_right + e_down_left, 3.),
+                 min(e_down_right + e_up_left, 3.)]
 
             self_values.append(ss + s)
             enemy_values.append(ee + e)
 
         ret_list = np.array([self_values, enemy_values])
-        ret_list = ret_list.reshape((7, 14, 2))
+        ret_list = ret_list.reshape((7, 8, 2))
 
-        return np.array([ret_list]) / 3.
+        return np.array([ret_list]) / 6.
 
     def column_height(self) -> list:
         heights = []
