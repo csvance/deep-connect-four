@@ -188,73 +188,6 @@ class C4State(object):
         np.place(self.state, self.state == 127, [C4SlotState.ENEMY.value])
         return
 
-    def one_hot(self) -> np.ndarray:
-        one_hot_state = np.zeros((6, 7, 2), dtype=np.int8)
-        for row_idx, row in enumerate(self.state):
-            for col_idx, column in enumerate(row):
-                if column == C4SlotState.SELF.value:
-                    one_hot_state[row_idx][col_idx][0] = 1
-                elif column == C4SlotState.ENEMY.value:
-                    one_hot_state[row_idx][col_idx][1] = 1
-
-        return np.array([one_hot_state])
-
-    def scan(self) -> np.ndarray:
-
-        def o_h(i: int):
-            item = None
-            if i == C4SlotState.EMPTY.value:
-                item = [0, 0]
-            elif i == C4SlotState.SELF.value:
-                item = [1, 0]
-            elif i == C4SlotState.ENEMY.value:
-                item = [0, 1]
-            else:
-                pass
-            return item
-
-        def s(v: list, l: int = 4):
-            ret = []
-            for start_idx in range(0, len(v)):
-                scan = v[start_idx:start_idx + l].tolist()
-                if len(scan) < l:
-                    continue
-                for idx, i in enumerate(scan):
-                    scan[idx] = o_h(i)
-                ret.append(scan)
-            return ret
-
-        horizontal_scans = []
-        # Scan Horizontal
-        for i in range(0, 6):
-            vector = self.state[i]
-            horizontal_scans.extend(s(vector))
-
-        vertical_scans = []
-        # Scan Vertical
-        for i in range(0, 7):
-            vector = self.state[:, i]
-            vertical_scans.extend(s(vector))
-
-        upright_scans = []
-        # Scan Up Right
-
-        downright_scans = []
-        # Scan Down Right
-
-        ret_scans = []
-        ret_scans.extend(horizontal_scans)
-        ret_scans.extend(vertical_scans)
-        ret_scans.extend(upright_scans)
-        ret_scans.extend(downright_scans)
-        ret_scans = np.array(ret_scans, dtype=np.int8)
-        return np.array([ret_scans])
-
-    def normalized(self) -> np.ndarray:
-        ret_state = self.state.copy()
-        ret_state = ret_state.reshape((6, 7, 1))
-        return np.array([ret_state / 2.])
-
     def move_values(self) -> np.ndarray:
 
         def move_value(vector):
@@ -333,7 +266,7 @@ class C4State(object):
         return heights
 
     def state_representation(self):
-        return [self.scan(), np.array([self.column_height()]) / 6., self.move_values()]
+        return [np.array([self.column_height()]) / 6., self.move_values()]
 
 
 class C4Game(object):
