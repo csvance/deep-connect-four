@@ -187,11 +187,11 @@ class C4State(object):
 
     def move_values(self) -> np.ndarray:
 
-        max_score = 9. + 12.
-        
         def move_value(vector):
             self_in_a_row = 0.
+            self_seperated = 0.
             enemy_in_a_row = 0.
+            enemey_seperated = 0.
 
             r_end = False
             for idx, i in enumerate(vector):
@@ -199,7 +199,7 @@ class C4State(object):
                     if not r_end:
                         enemy_in_a_row += 1.
                     else:
-                        enemy_in_a_row += 0.5
+                        enemey_seperated += 1.
                 elif i == C4SlotState.SELF.value:
                     break
                 else:
@@ -211,18 +211,13 @@ class C4State(object):
                     if not r_end:
                         self_in_a_row += 1.
                     else:
-                        self_in_a_row += 0.5
+                        self_seperated += 1.
                 elif i == C4SlotState.ENEMY.value:
                     break
                 else:
                     r_end = True
 
-            if self_in_a_row == 3:
-                self_in_a_row = max_score
-            if enemy_in_a_row == 3:
-                enemy_in_a_row = max_score / 2.
-
-            return self_in_a_row, enemy_in_a_row
+            return self_in_a_row, self_seperated, enemy_in_a_row, enemey_seperated
 
         def valid_index(row: int, col: int) -> bool:
             if col < 0 or col > 6:
@@ -243,21 +238,15 @@ class C4State(object):
 
             # Left
             v = self.state[height[col_index]][max(0, col_index - 3):col_index][::-1]
-            s, e = move_value(v)
-            self_value = min(self_value + s, max_score)
-            enemy_value = min(enemy_value + e, max_score)
+            ss_left, s_left, ee_left, e_left = move_value(v)
 
             # Right
             v = self.state[height[col_index]][col_index + 1:col_index + 4]
-            s, e = move_value(v)
-            self_value = min(self_value + s, max_score)
-            enemy_value = min(enemy_value + e, max_score)
+            ss_right, s_right, ee_right, e_right = move_value(v)
 
             # Down
             v = self.state[:, col_index][height[col_index] + 1:height[col_index] + 4]
-            s, e = move_value(v)
-            self_value = min(self_value + s, max_score)
-            enemy_value = min(enemy_value + e, max_score)
+            ss_down, s_down, ee_down, e_down = move_value(v)
 
             # Up Right
             start_row = height[col_index]
@@ -266,9 +255,7 @@ class C4State(object):
                 if not valid_index(col_index + i, start_row + i):
                     break
                 v.append(self.state[col_index + i][start_row + i])
-            s, e = move_value(v)
-            self_value = min(self_value + s, max_score)
-            enemy_value = min(enemy_value + e, max_score)
+            ss_up_right, s_up_right, ee_up_right, e_up_right = move_value(v)
 
             # Down Right
             start_row = height[col_index]
@@ -277,9 +264,8 @@ class C4State(object):
                 if not valid_index(start_row - i, col_index + i):
                     break
                 v.append(self.state[start_row - i][col_index + i])
-            s, e = move_value(v)
-            self_value = min(self_value + s, max_score)
-            enemy_value = min(enemy_value + e, max_score)
+            ss_down_right, s_down_right, ee_down_right, e_down_right = move_value(v)
+
 
             # Up Left
             start_row = height[col_index]
@@ -288,9 +274,7 @@ class C4State(object):
                 if not valid_index(start_row + i, col_index - i):
                     break
                 v.append(self.state[start_row + i][col_index - i])
-            s, e = move_value(v)
-            self_value = min(self_value + s, max_score)
-            enemy_value = min(enemy_value + e, max_score)
+            ss_up_left, s_up_left, ee_up_left, e_up_left = move_value(v)
 
             # Down Left
             start_row = height[col_index]
@@ -299,16 +283,20 @@ class C4State(object):
                 if not valid_index(start_row - i, col_index - i):
                     break
                 v.append(self.state[start_row - i][col_index - i])
-            s, e = move_value(v)
-            self_value = min(self_value + s, max_score)
-            enemy_value = min(enemy_value + e, max_score)
+            ss_down_left, s_down_left, ee_down_left, e_down_left = move_value(v)
 
-            self_values.append(self_value)
-            enemy_values.append(enemy_value)
+            ss = [ss_down, ss_right, ss_up_right, ss_down_right, ss_left, ss_up_left, ss_down_left]
+            s = [s_down, s_right, s_up_right, s_down_right, s_left, s_up_left, s_down_left]
+            ee = [ee_down, ee_right, ee_up_right, ee_down_right, ee_left, ee_up_left, ee_down_left]
+            e = [e_down, e_right, e_up_right, e_down_right, e_left, e_up_left, e_down_left]
 
-        ret_list = np.array([self_values, enemy_values]).reshape((7, 2))
+            self_values.append(ss + s)
+            enemy_values.append(ee + e)
 
-        return np.array([ret_list]) / max_score
+        ret_list = np.array([self_values, enemy_values])
+        ret_list = ret_list.reshape((7, 14, 2))
+
+        return np.array([ret_list]) / 3.
 
     def column_height(self) -> list:
         heights = []
