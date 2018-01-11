@@ -89,7 +89,7 @@ def human_vs_ai(weights_file: str):
             continue
 
 
-def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min: float, games: int,
+def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min: float, steps: int,
              gamma: float, gamma_steps: int, gamma_max: float,
              k: int):
     game_no = 0
@@ -163,13 +163,13 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                 print(c4.display())
                 print("")
 
-                if (game_no != 0 and game_no % 50 == 0) or game_no >= games:
+                if (game_no != 0 and game_no % 50 == 0) or c4ai.steps >= steps:
                     print("Saving...")
                     log_file.flush()
                     c4ai.save(weights_file)
 
-                    if game_no >= games:
-                        print("Finished %d games." % games)
+                    if c4ai.steps >= steps:
+                        print("Ran %d steps." % steps)
                         return
                     print("Done.")
 
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon', type=float, default=1.)
     parser.add_argument('--epsilon-steps', type=int, default=200000)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
-    parser.add_argument('--training-games', type=int, default=50)
+    parser.add_argument('--training-steps', type=int, default=2000000)
     parser.add_argument('--gamma', type=float, default=0.2)
     parser.add_argument('--gamma-steps', type=int, default=1000000)
     parser.add_argument('--gamma-max', type=float, default=0.85)
@@ -207,7 +207,7 @@ if __name__ == '__main__':
 
     if args.mode == 'ava':
         ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_steps=args.epsilon_steps,
-                 epsilon_min=args.epsilon_min, games=args.training_games, gamma=args.gamma,
+                 epsilon_min=args.epsilon_min, steps=args.training_steps, gamma=args.gamma,
                  gamma_steps=args.gamma_steps,
                  gamma_max=args.gamma_max, k=args.k)
     elif args.mode == 'hva':
