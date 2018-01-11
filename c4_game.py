@@ -250,13 +250,27 @@ class C4State(object):
         ret_scans = np.array(ret_scans, dtype=np.int8)
         return np.array([ret_scans])
 
-    def normalized(self):
+    def normalized(self) -> np.ndarray:
         ret_state = self.state.copy()
         ret_state = ret_state.reshape((6, 7, 1))
         return np.array([ret_state / 2.])
 
+    def height(self) -> np.ndarray:
+        heights = []
+        for i in range(0, 7):
+            vector = self.state[:, i]
+            height = 0
+            for v in reversed(vector):
+                if v != C4SlotState.EMPTY.value:
+                    height += 1
+                else:
+                    break
+            heights.append(height)
+
+        return np.array([heights]) / 6.
+
     def state_representation(self):
-        return self.scan()
+        return [self.scan(), self.height()]
 
 
 class C4Game(object):

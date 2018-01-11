@@ -57,13 +57,20 @@ class C4Model(object):
         self.learning_rate_start = learning_rate_start
         self.steps = 0
 
-        input = Input(shape=(45, 4, 2))
-        x = Conv2D(4, (1, 4), activation='relu')(input)
-        x = Flatten()(x)
+        input_vectors = Input(shape=(45, 4, 2))
+        input_heights = Input(shape=(7,))
+
+        x_1 = Conv2D(64, (1, 4), activation='relu')(input_vectors)
+        x_1 = Flatten()(x_1)
+
+        x_2 = Dense(7)(input_heights)
+
+        x = concatenate([x_1, x_2])
         x = Dense(100, activation='relu')(x)
+
         output = Dense(len(C4Action), activation='linear')(x)
 
-        model = Model(inputs=input, outputs=output)
+        model = Model(inputs=[input_vectors, input_heights], outputs=output)
         self.optimizer = Adam(lr=learning_rate_start)
         model.compile(optimizer=self.optimizer, loss='mse')
         model.summary()

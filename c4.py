@@ -188,7 +188,7 @@ if __name__ == '__main__':
     parser.add_argument('mode')
     parser.add_argument('--weights-file', type=str, default="weights.h5")
     parser.add_argument('--epsilon', type=float, default=1.)
-    parser.add_argument('--epsilon-steps', type=int, default=100000)
+    parser.add_argument('--epsilon-steps', type=int, default=200000)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-games', type=int, default=50)
     parser.add_argument('--gamma', type=float, default=0.2)
