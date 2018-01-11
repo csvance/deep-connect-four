@@ -263,7 +263,6 @@ class C4State(object):
                 v.append(self.state[start_row - i][col_index + i])
             ss_down_right, s_down_right, ee_down_right, e_down_right = move_value(v)
 
-
             # Up Left
             start_row = height[col_index]
             v = []
@@ -282,22 +281,23 @@ class C4State(object):
                 v.append(self.state[start_row - i][col_index - i])
             ss_down_left, s_down_left, ee_down_left, e_down_left = move_value(v)
 
-            ss = [ss_down, min(ss_right + ss_left, 3.), min(ss_up_right + ss_down_left, 3.),
-                  min(ss_down_right + ss_up_left, 3.)]
-            s = [s_down, min(s_right + s_left, 3.), min(s_up_right + s_down_left, 3.),
-                 min(s_down_right + s_up_left, 3.)]
-            ee = [ee_down, min(ee_right + ee_left, 3.), min(ee_up_right + ee_down_left, 3.),
-                  min(ee_down_right + ee_up_left, 3.)]
-            e = [e_down, min(e_right + e_left, 3.), min(e_up_right + e_down_left, 3.),
-                 min(e_down_right + e_up_left, 3.)]
+            ss = [ss_down / 3., (ss_right + ss_left) / 6., (ss_up_right + ss_down_left) / 6.,
+                  (ss_down_right + ss_up_left) / 6.]
+            s = [s_down / 3., (s_right + s_left) / 6., (s_up_right + s_down_left) / 6.,
+                 (s_down_right + s_up_left) / 6.]
+            ee = [-ee_down / 3., -(ee_right + ee_left) / 6., -(ee_up_right + ee_down_left) / 6.,
+                  -(ee_down_right + ee_up_left) / 6.]
+            e = [-e_down / 3., -(e_right + e_left) / 6., -(e_up_right + e_down_left) / 6.,
+                 -(e_down_right + e_up_left) / 6.]
 
             self_values.append(ss + s)
             enemy_values.append(ee + e)
 
         ret_list = np.array([self_values, enemy_values])
-        ret_list = ret_list.reshape((7, 8, 2))
+        ret_list = ret_list.swapaxes(0, 2)
+        ret_list = ret_list.swapaxes(0, 1)
 
-        return np.array([ret_list]) / 6.
+        return np.array([ret_list])
 
     def column_height(self) -> list:
         heights = []
@@ -314,7 +314,7 @@ class C4State(object):
         return heights
 
     def state_representation(self):
-        return [np.array([self.column_height()]) / 6., self.move_values()]
+        return [-(5 - np.array([self.column_height()])) / 5., self.move_values()]
 
 
 class C4Game(object):
