@@ -8,6 +8,48 @@ from c4_game import C4Game, C4MoveResult, C4Team, C4Action
 from c4_model import C4Model
 
 
+def human_vs_human(weights_file: str):
+    c4 = C4Game()
+    c4ai = C4Model(epsilon=0., epsilon_min=0.)
+    c4ai.load(weights_file)
+
+    print(c4.display())
+
+    while True:
+        current_team = c4.current_turn()
+        valid_moves = c4.state.valid_moves()
+
+        c4ai.print_suggest(c4.state)
+
+        if current_team == C4Team.BLACK:
+            move = input("Move(%s): " % current_team)
+            if move == 'q':
+                return
+            move = C4Action(int(move) - 1)
+        elif current_team == C4Team.RED:
+            move = input("Move(%s): " % current_team)
+            if move == 'q':
+                return
+            move = C4Action(int(move) - 1)
+
+        result = c4.action(move)
+
+        print(c4.display())
+        print("Result: %s" % result)
+
+        if result == C4MoveResult.VICTORY:
+            c4.reset()
+            print(c4.display())
+            continue
+        elif result == C4MoveResult.TIE:
+            c4.reset()
+            print(c4.display())
+            continue
+        elif result == C4MoveResult.INVALID:
+            print(c4.display())
+            continue
+
+
 def human_vs_ai(weights_file: str):
     c4 = C4Game()
     c4ai = C4Model(epsilon=0., epsilon_min=0.)
@@ -18,6 +60,8 @@ def human_vs_ai(weights_file: str):
     while True:
         current_team = c4.current_turn()
         valid_moves = c4.state.valid_moves()
+
+        c4ai.print_suggest(c4.state)
 
         if current_team == C4Team.BLACK:
             move = input("Move(%s): " % current_team)
@@ -149,8 +193,8 @@ if __name__ == '__main__':
     parser.add_argument('--training-games', type=int, default=50)
     parser.add_argument('--gamma', type=float, default=0.2)
     parser.add_argument('--gamma-steps', type=int, default=1000000)
-    parser.add_argument('--gamma-max', type=float, default=0.95)
-    parser.add_argument('--k', type=int, default=5)
+    parser.add_argument('--gamma-max', type=float, default=0.85)
+    parser.add_argument('--k', type=int, default=4)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
@@ -164,6 +208,8 @@ if __name__ == '__main__':
                  gamma_max=args.gamma_max, k=args.k)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
+    elif args.mode == 'hvh':
+        human_vs_human(args.weights_file)
     else:
         print("Valid modes are: ")
         print("hvh - Human vs Human")

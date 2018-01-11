@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, Conv2D
+from keras.layers import Dense, Flatten, Input, Conv2D, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -42,8 +42,8 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 100000, epsilon_min=0.05,
-                 gamma=0.2, gamma_steps: int = 1000000, gamma_max: float = 0.95, learning_rate=0.001,
-                 learning_rate_start=0.0025, k: int = 5):
+                 gamma=0.2, gamma_steps: int = 1000000, gamma_max: float = 0.90, learning_rate=0.001,
+                 learning_rate_start=0.0025, k: int = 4):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
         self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
@@ -57,10 +57,10 @@ class C4Model(object):
         self.learning_rate_start = learning_rate_start
         self.steps = 0
 
-        input = Input(shape=(6, 7, 1))
-        x = Conv2D(64, (4, 4), activation='relu')(input)
+        input = Input(shape=(45, 4, 2))
+        x = Conv2D(4, (1, 4), activation='relu')(input)
         x = Flatten()(x)
-        x = Dense(512, activation='relu')(x)
+        x = Dense(100, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=input, outputs=output)
@@ -88,7 +88,7 @@ class C4Model(object):
                 # Advance state one turn to change the perspective
                 new_state.invert_perspective()
 
-                prediction = self._model.predict(np.array([new_state.normalized()]))[0]
+                prediction = self._model.predict(new_state.state_representation())[0]
                 reward = np.amax(prediction)
                 action = C4Action(np.argmax(prediction))
 
@@ -103,7 +103,7 @@ class C4Model(object):
                 move_result = new_state.move(action)
 
             target = result.reward + self.gamma.value * \
-                     (positive_reward_sum / self.k_self - 0.75 * negative_reward_sum / self.k_enemy)
+                     (positive_reward_sum / self.k_self - negative_reward_sum / self.k_enemy)
 
         else:
             target = result.reward
@@ -118,10 +118,10 @@ class C4Model(object):
 
         self.reward_memory.append(target)
 
-        target_f = self._model.predict(np.array([result.old_state.normalized()]))
+        target_f = self._model.predict(result.old_state.state_representation())
         target_f[0][result.action.value] = target
 
-        history = self._model.fit(np.array([result.old_state.normalized()]), target_f, epochs=1, verbose=0)
+        history = self._model.fit(result.old_state.state_representation(), target_f, epochs=1, verbose=0)
 
         self.epsilon.step(1)
         self.gamma.step(1)
@@ -140,6 +140,18 @@ class C4Model(object):
 
         return history
 
+    def print_suggest(self, state: C4State):
+        predictions = self._model.predict(state.state_representation())[0]
+
+        p_list = []
+        for i in range(0, len(predictions)):
+            p_list.append([i + 1, predictions[i]])
+
+        p_list.sort(key=lambda x: x[1], reverse=True)
+
+        for p in p_list:
+            print("%d: %f" % (p[0], p[1]))
+
     def predict(self, state: C4State, valid_moves: np.ndarray) -> C4Action:
         if np.random.rand() <= self.epsilon.value:
             potential_moves = []
@@ -148,7 +160,7 @@ class C4Model(object):
                     potential_moves.append(C4Action(idx))
             return np.random.choice(potential_moves)
 
-        predictions = self._model.predict(np.array([state.normalized()]))[0]
+        predictions = self._model.predict(state.state_representation())[0]
 
         # We only want valid moves
         predictions = predictions * valid_moves

@@ -125,6 +125,8 @@ class C4State(object):
             else:
                 in_a_row = 0
 
+        return False
+
         # Diagonal
         # Find border cell
         r = row
@@ -195,12 +197,66 @@ class C4State(object):
                 elif column == C4SlotState.ENEMY.value:
                     one_hot_state[row_idx][col_idx][1] = 1
 
-        return one_hot_state
+        return np.array([one_hot_state])
+
+    def scan(self) -> np.ndarray:
+
+        def o_h(i: int):
+            item = None
+            if i == C4SlotState.EMPTY.value:
+                item = [0, 0]
+            elif i == C4SlotState.SELF.value:
+                item = [1, 0]
+            elif i == C4SlotState.ENEMY.value:
+                item = [0, 1]
+            else:
+                pass
+            return item
+
+        def s(v: list, l: int = 4):
+            ret = []
+            for start_idx in range(0, len(v)):
+                scan = v[start_idx:start_idx + l].tolist()
+                if len(scan) < l:
+                    continue
+                for idx, i in enumerate(scan):
+                    scan[idx] = o_h(i)
+                ret.append(scan)
+            return ret
+
+        horizontal_scans = []
+        # Scan Horizontal
+        for i in range(0, 6):
+            vector = self.state[i]
+            horizontal_scans.extend(s(vector))
+
+        vertical_scans = []
+        # Scan Vertical
+        for i in range(0, 7):
+            vector = self.state[:, i]
+            vertical_scans.extend(s(vector))
+
+        upright_scans = []
+        # Scan Up Right
+
+        downright_scans = []
+        # Scan Down Right
+
+        ret_scans = []
+        ret_scans.extend(horizontal_scans)
+        ret_scans.extend(vertical_scans)
+        ret_scans.extend(upright_scans)
+        ret_scans.extend(downright_scans)
+        ret_scans = np.array(ret_scans, dtype=np.int8)
+        return np.array([ret_scans])
 
     def normalized(self):
         ret_state = self.state.copy()
         ret_state = ret_state.reshape((6, 7, 1))
-        return ret_state / 2.
+        return np.array([ret_state / 2.])
+
+    def state_representation(self):
+        return self.scan()
 
 
 class C4Game(object):
