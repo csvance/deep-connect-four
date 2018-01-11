@@ -191,20 +191,37 @@ class C4State(object):
     def move_values(self) -> np.ndarray:
 
         def move_value(vector):
-            self_in_a_row = 0
-            enemy_in_a_row = 0
+            self_in_a_row = 0.
+            enemy_in_a_row = 0.
 
+            r_end = False
             for i in vector:
                 if i == C4SlotState.ENEMY.value:
-                    enemy_in_a_row += 1
-                else:
+                    if not r_end:
+                        enemy_in_a_row += 1.
+                    else:
+                        enemy_in_a_row += 0.5
+                elif i == C4SlotState.SELF.value:
                     break
+                else:
+                    r_end = True
 
+            r_end = False
             for i in vector:
                 if i == C4SlotState.SELF.value:
-                    self_in_a_row += 1
-                else:
+                    if not r_end:
+                        self_in_a_row += 1.
+                    else:
+                        self_in_a_row += 0.5
+                elif i == C4SlotState.ENEMY.value:
                     break
+                else:
+                    r_end = True
+
+            if self_in_a_row == 3:
+                self_in_a_row = 9
+            if enemy_in_a_row == 3:
+                enemy_in_a_row = 9
 
             return self_in_a_row, enemy_in_a_row
 
@@ -221,20 +238,20 @@ class C4State(object):
             # Left
             v = self.state[height[col_index]][max(0, col_index - 3):col_index][::-1]
             s, e = move_value(v)
-            self_value = max(s, self_value)
-            enemy_value = max(e, enemy_value)
+            self_value = min(self_value + s, 9.)
+            enemy_value = min(enemy_value + e, 9.)
 
             # Right
             v = self.state[height[col_index]][col_index + 1:col_index + 4]
             s, e = move_value(v)
-            self_value = max(s, self_value)
-            enemy_value = max(e, enemy_value)
+            self_value = min(self_value + s, 9.)
+            enemy_value = min(enemy_value + e, 9.)
 
             # Down
             v = self.state[:, col_index][height[col_index] + 1:height[col_index] + 4]
             s, e = move_value(v)
-            self_value = max(s, self_value)
-            enemy_value = max(e, enemy_value)
+            self_value = min(self_value + s, 9.)
+            enemy_value = min(enemy_value + e, 9.)
 
             # Up Right
 
@@ -249,7 +266,7 @@ class C4State(object):
 
         ret_list = np.array([self_values, enemy_values]).reshape((7, 2))
 
-        return np.array([ret_list]) / 3.
+        return np.array([ret_list]) / 9.
 
     def column_height(self) -> list:
         heights = []

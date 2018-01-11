@@ -160,6 +160,7 @@ class C4Model(object):
             print("%d: %f" % (p[0], p[1]))
 
     def predict(self, state: C4State, valid_moves: np.ndarray) -> C4Action:
+
         if np.random.rand() <= self.epsilon.value:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
@@ -170,7 +171,10 @@ class C4Model(object):
         predictions = self._model.predict(state.state_representation())[0]
 
         # We only want valid moves
-        predictions = predictions * valid_moves
+        np.place(valid_moves, valid_moves == 0., [-999999.])
+        np.place(valid_moves, valid_moves == 1., 0.)
+
+        predictions = predictions + valid_moves
 
         return C4Action(np.argmax(predictions))
 
