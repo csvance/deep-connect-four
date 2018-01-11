@@ -255,10 +255,73 @@ class C4State(object):
         ret_state = ret_state.reshape((6, 7, 1))
         return np.array([ret_state / 2.])
 
-    def height(self) -> np.ndarray:
+    def move_values(self) -> np.ndarray:
+
+        def move_value(vector):
+            self_in_a_row = 0
+            enemy_in_a_row = 0
+
+            for i in vector:
+                if i == C4SlotState.ENEMY.value:
+                    enemy_in_a_row += 1
+                else:
+                    break
+
+            for i in vector:
+                if i == C4SlotState.SELF.value:
+                    self_in_a_row += 1
+                else:
+                    break
+
+            return self_in_a_row, enemy_in_a_row
+
+        height = np.array(self.column_height(), dtype=np.int8)
+        height = 5 - height
+
+        self_values = []
+        enemy_values = []
+
+        for col_index in range(0, 7):
+            self_value = 0
+            enemy_value = 0
+
+            # Left
+            v = self.state[height[col_index]][max(0, col_index - 3):col_index][::-1]
+            s, e = move_value(v)
+            self_value = max(s, self_value)
+            enemy_value = max(e, enemy_value)
+
+            # Right
+            v = self.state[height[col_index]][col_index + 1:col_index + 4]
+            s, e = move_value(v)
+            self_value = max(s, self_value)
+            enemy_value = max(e, enemy_value)
+
+            # Down
+            v = self.state[:, col_index][height[col_index] + 1:height[col_index] + 4]
+            s, e = move_value(v)
+            self_value = max(s, self_value)
+            enemy_value = max(e, enemy_value)
+
+            # Up Right
+
+            # Down Right
+
+            # Up Left
+
+            # Down Left
+
+            self_values.append(self_value)
+            enemy_values.append(enemy_value)
+
+        ret_list = np.array([self_values, enemy_values]).reshape((7, 2))
+
+        return np.array([ret_list]) / 3.
+
+    def column_height(self) -> list:
         heights = []
-        for i in range(0, 7):
-            vector = self.state[:, i]
+        for column_idx in range(0, 7):
+            vector = self.state[:, column_idx]
             height = 0
             for v in reversed(vector):
                 if v != C4SlotState.EMPTY.value:
@@ -267,10 +330,10 @@ class C4State(object):
                     break
             heights.append(height)
 
-        return np.array([heights]) / 6.
+        return heights
 
     def state_representation(self):
-        return [self.scan(), self.height()]
+        return [self.scan(), np.array([self.column_height()]) / 6., self.move_values()]
 
 
 class C4Game(object):
