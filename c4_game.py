@@ -281,23 +281,26 @@ class C4State(object):
                 v.append(self.state[start_row - i][col_index - i])
             ss_down_left, s_down_left, ee_down_left, e_down_left = move_value(v)
 
-            ss = [ss_down / 3., (ss_right + ss_left) / 6., (ss_up_right + ss_down_left) / 6.,
-                  (ss_down_right + ss_up_left) / 6.]
-            s = [s_down / 3., (s_right + s_left) / 6., (s_up_right + s_down_left) / 6.,
-                 (s_down_right + s_up_left) / 6.]
-            ee = [-ee_down / 3., -(ee_right + ee_left) / 6., -(ee_up_right + ee_down_left) / 6.,
-                  -(ee_down_right + ee_up_left) / 6.]
-            e = [-e_down / 3., -(e_right + e_left) / 6., -(e_up_right + e_down_left) / 6.,
-                 -(e_down_right + e_up_left) / 6.]
+            ss = [min(3., ss_down), min(3., ss_right + ss_left), min(3., ss_up_right + ss_down_left),
+                  min(3., ss_down_right + ss_up_left)]
+            ee = [min(3., ee_down), min(3., ee_right + ee_left), min(3., ee_up_right + ee_down_left),
+                  min(3., ee_down_right + ee_up_left)]
+
+            s = [min(3., s_down), min(3., s_right + s_left), min(3., s_up_right + s_down_left),
+                 min(3., s_down_right + s_up_left)]
+            e = [min(3., e_down), min(3., e_right + e_left), min(3., e_up_right + e_down_left),
+                 min(3., e_down_right + e_up_left)]
 
             self_values.append(ss + s)
             enemy_values.append(ee + e)
+            self_values.append(ss)
+            enemy_values.append(ee)
 
         ret_list = np.array([self_values, enemy_values])
         ret_list = ret_list.swapaxes(0, 2)
         ret_list = ret_list.swapaxes(0, 1)
 
-        return np.array([ret_list])
+        return np.array([ret_list]) / 3.
 
     def column_height(self) -> list:
         heights = []
@@ -314,7 +317,7 @@ class C4State(object):
         return heights
 
     def state_representation(self):
-        return [-(5 - np.array([self.column_height()])) / 5., self.move_values()]
+        return [np.array([self.column_height()]) / 5., self.move_values()]
 
 
 class C4Game(object):
