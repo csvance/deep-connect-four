@@ -61,16 +61,18 @@ class C4Model(object):
         input_heights = Input(shape=(7,))
         input_scores = Input(shape=(7, 4, 2))
 
-        x_1 = input_heights
+        # x_1 = input_heights
+        #
+        # x_2 = input_scores
+        # x_2 = Dense(32, activation='relu')(x_2)
+        # x_2 = Dense(64, activation='relu')(x_2)
+        # x_2 = Dense(64, activation='relu')(x_2)
+        # x_2 = Flatten()(x_2)
+        #
+        # x = concatenate([x_1, x_2])
+        # x = Dense(128, activation='relu')(x)
 
-        x_2 = input_scores
-        x_2 = Dense(32, activation='relu')(x_2)
-        x_2 = Dense(64, activation='relu')(x_2)
-        x_2 = Dense(64, activation='relu')(x_2)
-        x_2 = Flatten()(x_2)
-
-        x = concatenate([x_1, x_2])
-        x = Dense(128, activation='relu')(x)
+        x = Flatten()(input_scores)
 
         output = Dense(len(C4Action), activation='linear')(x)
 
@@ -114,7 +116,7 @@ class C4Model(object):
                 move_result = new_state.move(action)
 
             target = result.reward + self.gamma.value * \
-                     (positive_reward_sum / self.k_self - negative_reward_sum / self.k_enemy)
+                     (positive_reward_sum / self.k_self - 0. * negative_reward_sum / self.k_enemy)
 
         else:
             target = result.reward

@@ -331,14 +331,21 @@ class C4Game(object):
         self.last_victory = None
         self.duplicate = False
 
+        self.first_turn = C4Team.RED
+
         self.normal_memories = deque(maxlen=10000)
         self.win_loss_memories = deque(maxlen=200)
 
-    def reset(self):
+    def reset(self, first_turn: C4Team = None):
         self.turn = 0
         self.state = C4State()
         self.winner = None
         self.duplicate = False
+
+        if self.first_turn == C4Team.RED:
+            self.first_turn = C4Team.BLACK
+        else:
+            self.first_turn = C4Team.RED
 
         self.red_memories = []
         self.black_memories = []
@@ -378,7 +385,7 @@ class C4Game(object):
                 self.red_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.black_memories[-1].reward = 0.
+                    self.black_memories[-1].reward = -1.
                     self.black_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])
@@ -391,7 +398,7 @@ class C4Game(object):
                 self.black_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.red_memories[-1].reward = 0.
+                    self.red_memories[-1].reward = -1.
                     self.red_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])
@@ -456,10 +463,16 @@ class C4Game(object):
         return output[:len(output) - 1]
 
     def current_turn(self):
-        if self.turn % 2 == 0:
-            return C4Team.RED
+        if self.first_turn == C4Team.RED:
+            if self.turn % 2 == 0:
+                return C4Team.RED
+            else:
+                return C4Team.BLACK
         else:
-            return C4Team.BLACK
+            if self.turn % 2 == 0:
+                return C4Team.BLACK
+            else:
+                return C4Team.RED
 
     def sample(self, batch_size=21, win_loss_samples=2):
 
