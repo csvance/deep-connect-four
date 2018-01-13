@@ -378,7 +378,7 @@ class C4Game(object):
                 self.red_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.black_memories[-1].reward = -1.
+                    self.black_memories[-1].reward = 0.
                     self.black_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])
@@ -391,7 +391,7 @@ class C4Game(object):
                 self.black_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.red_memories[-1].reward = -1.
+                    self.red_memories[-1].reward = 0.
                     self.red_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])

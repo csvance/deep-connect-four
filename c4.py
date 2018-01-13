@@ -19,8 +19,7 @@ def human_vs_human(weights_file: str):
         current_team = c4.current_turn()
         valid_moves = c4.state.valid_moves()
 
-        # c4ai.print_suggest(c4.state)
-        print(c4.state.move_values())
+        c4ai.print_suggest(c4.state)
 
         if current_team == C4Team.BLACK:
             move = input("Move(%s): " % current_team)
@@ -199,7 +198,7 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.2)
     parser.add_argument('--gamma-steps', type=int, default=1000000)
     parser.add_argument('--gamma-max', type=float, default=0.99)
-    parser.add_argument('--k', type=int, default=4)
+    parser.add_argument('--k', type=int, default=2)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
