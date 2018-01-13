@@ -19,7 +19,8 @@ def human_vs_human(weights_file: str):
         current_team = c4.current_turn()
         valid_moves = c4.state.valid_moves()
 
-        c4ai.print_suggest(c4.state)
+        # c4ai.print_suggest(c4.state)
+        print(c4.state.move_values())
 
         if current_team == C4Team.BLACK:
             move = input("Move(%s): " % current_team)
@@ -192,12 +193,12 @@ if __name__ == '__main__':
     parser.add_argument('mode')
     parser.add_argument('--weights-file', type=str, default="weights.h5")
     parser.add_argument('--epsilon', type=float, default=1.)
-    parser.add_argument('--epsilon-steps', type=int, default=200000)
+    parser.add_argument('--epsilon-steps', type=int, default=500000)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-steps', type=int, default=2000000)
     parser.add_argument('--gamma', type=float, default=0.2)
     parser.add_argument('--gamma-steps', type=int, default=1000000)
-    parser.add_argument('--gamma-max', type=float, default=0.85)
+    parser.add_argument('--gamma-max', type=float, default=0.99)
     parser.add_argument('--k', type=int, default=4)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()

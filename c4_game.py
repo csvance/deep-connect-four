@@ -293,8 +293,6 @@ class C4State(object):
 
             self_values.append(ss + s)
             enemy_values.append(ee + e)
-            self_values.append(ss)
-            enemy_values.append(ee)
 
         ret_list = np.array([self_values, enemy_values])
         ret_list = ret_list.swapaxes(0, 2)
