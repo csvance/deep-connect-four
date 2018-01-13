@@ -105,7 +105,7 @@ def ai_vs_best(c4: C4Game, c4ai: C4Model, games: int = 100):
         if current_team == C4Team.BLACK:
             move = c4.best_action(valid_moves=valid_moves)
         elif current_team == C4Team.RED:
-            move = c4ai.predict(c4.state, valid_moves=valid_moves, epsilon=0.5)
+            move = c4ai.predict(c4.state, valid_moves=valid_moves, epsilon=0.05)
 
         result = c4.action(move)
 
