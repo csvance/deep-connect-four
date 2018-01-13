@@ -291,8 +291,8 @@ class C4State(object):
             e = [min(3., e_down), min(3., e_right + e_left), min(3., e_up_right + e_down_left),
                  min(3., e_down_right + e_up_left)]
 
-            self_values.append(ss + s)
-            enemy_values.append(ee + e)
+            self_values.append(ss)
+            enemy_values.append(ee)
 
         ret_list = np.array([self_values, enemy_values])
         ret_list = ret_list.swapaxes(0, 2)
@@ -367,7 +367,7 @@ class C4Game(object):
             reward = 0.
             done = False
         elif move_result == C4MoveResult.NONE:
-            reward = 0.1
+            reward = 0.
             done = False
 
         action_result = C4ActionResult(action=action, result=move_result, old_state=old_state, new_state=new_state,
@@ -405,6 +405,33 @@ class C4Game(object):
             self.state.invert_perspective()
 
         return move_result
+
+    def best_action(self, valid_moves: list):
+
+        self_scores = []
+        enemy_scores = []
+
+        move_values = self.state.move_values()[0]
+        for move_idx, move in enumerate(valid_moves):
+            if move == 0:
+                move_values[move_idx] = -9999.
+
+        for action_idx, action in enumerate(move_values):
+            self_max_index = action_idx
+            self_max_value = np.amax(action[:, 0])
+            enemy_max_index = action_idx
+            enemy_max_value = np.amax(action[:, 1])
+
+            self_scores.append([self_max_index, self_max_value])
+            enemy_scores.append([enemy_max_index, enemy_max_value])
+
+        self_scores.sort(key=lambda x: x[1], reverse=True)
+        enemy_scores.sort(key=lambda x: x[1], reverse=True)
+
+        if self_scores[0][1] >= enemy_scores[0][1]:
+            return C4Action(self_scores[0][0])
+        else:
+            return C4Action(enemy_scores[0][0])
 
     def display(self) -> str:
 

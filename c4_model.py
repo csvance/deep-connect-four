@@ -4,6 +4,7 @@ from keras.backend import set_session
 from keras.layers import Dense, Flatten, Input, Conv2D, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
+from keras.utils import plot_model
 
 from c4_game import C4Action, C4ActionResult, C4State
 
@@ -42,7 +43,7 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 500000, epsilon_min=0.05,
-                 gamma=0.2, gamma_steps: int = 1000000, gamma_max: float = 0.99, learning_rate=0.001,
+                 gamma=0.0, gamma_steps: int = 1000000, gamma_max: float = 0.9, learning_rate=0.001,
                  learning_rate_start=0.0025, k: int = 2):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
@@ -58,16 +59,18 @@ class C4Model(object):
         self.steps = 0
 
         input_heights = Input(shape=(7,))
-        input_scores = Input(shape=(7, 8, 2))
+        input_scores = Input(shape=(7, 4, 2))
 
         x_1 = input_heights
 
         x_2 = input_scores
-        x_2 = Dense(20, activation='relu')(x_2)
+        x_2 = Dense(32, activation='relu')(x_2)
+        x_2 = Dense(64, activation='relu')(x_2)
+        x_2 = Dense(64, activation='relu')(x_2)
         x_2 = Flatten()(x_2)
 
         x = concatenate([x_1, x_2])
-        x = Dense(512, activation='relu')(x)
+        x = Dense(128, activation='relu')(x)
 
         output = Dense(len(C4Action), activation='linear')(x)
 
@@ -160,9 +163,14 @@ class C4Model(object):
         for p in p_list:
             print("%d: %f" % (p[0], p[1]))
 
-    def predict(self, state: C4State, valid_moves: np.ndarray) -> C4Action:
+    def predict(self, state: C4State, valid_moves: np.ndarray, epsilon: float = None) -> C4Action:
 
-        if np.random.rand() <= self.epsilon.value:
+        if epsilon is None:
+            e = self.epsilon.value
+        else:
+            e = epsilon
+
+        if np.random.rand() <= e:
             potential_moves = []
             for idx in range(0, len(valid_moves)):
                 if valid_moves[idx] == 1:

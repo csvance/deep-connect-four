@@ -89,6 +89,40 @@ def human_vs_ai(weights_file: str):
             continue
 
 
+def ai_vs_best(c4: C4Game, c4ai: C4Model, games: int = 100):
+    best_wins = 0
+    ai_wins = 0
+
+    c4.reset()
+    while True:
+
+        if best_wins + ai_wins >= games:
+            return best_wins, ai_wins
+
+        current_team = c4.current_turn()
+        valid_moves = c4.state.valid_moves()
+
+        if current_team == C4Team.BLACK:
+            move = c4.best_action(valid_moves=valid_moves)
+        elif current_team == C4Team.RED:
+            move = c4ai.predict(c4.state, valid_moves=valid_moves, epsilon=0.5)
+
+        result = c4.action(move)
+
+        if result == C4MoveResult.VICTORY:
+            if c4.current_turn() == C4Team.RED:
+                ai_wins += 1
+            elif c4.current_turn() == C4Team.BLACK:
+                best_wins += 1
+            c4.reset()
+            continue
+        elif result == C4MoveResult.TIE:
+            c4.reset()
+            continue
+        elif result == C4MoveResult.INVALID:
+            continue
+
+
 def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min: float, training_steps: int,
              gamma: float, gamma_steps: int, gamma_max: float,
              k: int):
@@ -96,10 +130,16 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
     red_wins = 0
     black_wins = 0
 
-    headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'avg', 'med', 'std', 'clipped', 'gamma']
-    log_file = open('log.csv', 'w')
-    log_writer = csv.DictWriter(log_file, fieldnames=headers)
-    log_writer.writeheader()
+    stats_headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'avg', 'med', 'std', 'clipped',
+                     'gamma']
+    stats_log_file = open('stats_log.csv', 'w')
+    stats_log_writer = csv.DictWriter(stats_log_file, fieldnames=stats_headers)
+    stats_log_writer.writeheader()
+
+    perf_headers = ['ai_win_rate']
+    perf_log_file = open('perf_log.csv', 'w')
+    perf_log_writer = csv.DictWriter(perf_log_file, fieldnames=perf_headers)
+    perf_log_writer.writeheader()
 
     c4 = C4Game()
     c4ai = C4Model(epsilon=epsilon, epsilon_steps=epsilon_steps, epsilon_min=epsilon_min,
@@ -154,7 +194,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                 stats['std'] = stdev
                 stats['gamma'] = c4ai.gamma.value
                 stats['clipped'] = clipped
-                log_writer.writerow(stats)
+                stats_log_writer.writerow(stats)
 
                 print("Red: %d Black %d Steps: %d" % (red_wins, black_wins, steps))
                 print("Epsilon: %f Gamma: %f Loss: %f, LR: %f" % (
@@ -165,8 +205,16 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
 
                 if (game_no != 0 and game_no % 50 == 0) or c4ai.steps >= training_steps:
                     print("Saving...")
-                    log_file.flush()
+                    stats_log_file.flush()
                     c4ai.save(weights_file)
+
+                    best_wins, ai_wins = ai_vs_best(c4, c4ai)
+                    ai_win_rate = ai_wins / (best_wins + ai_wins)
+
+                    perf_log_writer.writerow({'ai_win_rate': ai_win_rate})
+                    perf_log_file.flush()
+
+                    print("AI won %f%% of games" % ai_win_rate)
 
                     if c4ai.steps >= training_steps:
                         print("Ran %d steps." % steps)
@@ -195,9 +243,9 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon-steps', type=int, default=500000)
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-steps', type=int, default=2000000)
-    parser.add_argument('--gamma', type=float, default=0.2)
+    parser.add_argument('--gamma', type=float, default=0.0)
     parser.add_argument('--gamma-steps', type=int, default=1000000)
-    parser.add_argument('--gamma-max', type=float, default=0.99)
+    parser.add_argument('--gamma-max', type=float, default=0.9)
     parser.add_argument('--k', type=int, default=2)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
