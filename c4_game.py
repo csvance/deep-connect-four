@@ -300,6 +300,18 @@ class C4State(object):
 
         return np.array([ret_list]) / 3.
 
+    def one_hot(self) -> np.ndarray:
+        ret_state = np.zeros((6, 7, 2), dtype=np.int8)
+        for row_idx, row in enumerate(self.state):
+            for col_idx, col in enumerate(row):
+                if col == C4SlotState.EMPTY.value:
+                    pass
+                elif col == C4SlotState.SELF.value:
+                    ret_state[row_idx][col_idx][0] = 0
+                elif col == C4SlotState.ENEMY.value:
+                    ret_state[row_idx][col_idx][1] = 1
+        return ret_state
+
     def column_height(self) -> list:
         heights = []
         for column_idx in range(0, 7):
@@ -365,7 +377,7 @@ class C4Game(object):
                 self.last_victory.invert_perspective()
 
             self.last_victory = self.state.copy()
-            reward = 1.
+            reward = 0.25
             done = True
         elif move_result == C4MoveResult.TIE:
             reward = 0.
@@ -385,7 +397,7 @@ class C4Game(object):
                 self.red_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.black_memories[-1].reward = -1.
+                    self.black_memories[-1].reward = -0.25
                     self.black_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])
@@ -398,7 +410,7 @@ class C4Game(object):
                 self.black_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.red_memories[-1].reward = -1.
+                    self.red_memories[-1].reward = -0.25
                     self.red_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])
@@ -474,15 +486,15 @@ class C4Game(object):
             else:
                 return C4Team.RED
 
-    def sample(self, batch_size=21, win_loss_samples=2):
+    def sample(self, batch_size=21, win_loss_proportion=0.5):
+
+        win_loss_batch_size = int(batch_size * win_loss_proportion)
+        normal_batch_size = batch_size - win_loss_batch_size
 
         if len(self.normal_memories) < batch_size:
             return None
-        if len(self.win_loss_memories) < win_loss_samples:
+        if len(self.win_loss_memories) < win_loss_batch_size:
             return None
-
-        win_loss_batch_size = win_loss_samples
-        normal_batch_size = batch_size - win_loss_batch_size
 
         normal_memories = random.sample(self.normal_memories, normal_batch_size)
         win_loss_memories = random.sample(self.win_loss_memories, win_loss_batch_size)
