@@ -147,6 +147,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
     try:
         if weights_file is not None:
             c4ai.load(weights_file)
+            c4.load()
     except OSError:
         print("Warning: could not load weights file!")
         pass
@@ -218,6 +219,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
 
                     if c4ai.steps >= training_steps:
                         print("Ran %d steps." % steps)
+                        c4.save()
                         return
                     print("Done.")
 

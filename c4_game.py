@@ -1,7 +1,7 @@
 import random
 from collections import deque
 from enum import Enum, unique
-
+import pickle
 import numpy as np
 
 
@@ -377,7 +377,7 @@ class C4Game(object):
                 self.last_victory.invert_perspective()
 
             self.last_victory = self.state.copy()
-            reward = 0.25
+            reward = 0.5
             done = True
         elif move_result == C4MoveResult.TIE:
             reward = 0.
@@ -397,7 +397,7 @@ class C4Game(object):
                 self.red_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.black_memories[-1].reward = -0.25
+                    self.black_memories[-1].reward = -1.
                     self.black_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])
@@ -410,7 +410,7 @@ class C4Game(object):
                 self.black_memories.append(action_result)
 
                 if move_result == C4MoveResult.VICTORY:
-                    self.red_memories[-1].reward = -0.25
+                    self.red_memories[-1].reward = -1.
                     self.red_memories[-1].done = True
 
                     self.win_loss_memories.append(self.red_memories[-1])
@@ -486,7 +486,7 @@ class C4Game(object):
             else:
                 return C4Team.RED
 
-    def sample(self, batch_size=21, win_loss_proportion=0.5):
+    def sample(self, batch_size=21, win_loss_proportion=0.33):
 
         win_loss_batch_size = int(batch_size * win_loss_proportion)
         normal_batch_size = batch_size - win_loss_batch_size
@@ -505,3 +505,11 @@ class C4Game(object):
 
         # Shuffle
         return random.sample(combined_batch, len(combined_batch))
+
+    def save(self):
+        pickle.dump(self.win_loss_memories, open('win_loss_memories.p', 'wb'))
+        pickle.dump(self.normal_memories, open('normal_memories.p', 'wb'))
+
+    def load(self):
+        self.win_loss_memories = pickle.load(open('win_loss_memories.p', 'rb'))
+        self.normal_memories = pickle.load(open('normal_memories.p', 'rb'))

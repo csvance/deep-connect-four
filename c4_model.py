@@ -1,10 +1,9 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, Conv2D, concatenate
+from keras.layers import Dense, Flatten, Input, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
-from keras.utils import plot_model
 
 from c4_game import C4Action, C4ActionResult, C4State
 
@@ -62,11 +61,12 @@ class C4Model(object):
         input_scores = Input(shape=(7, 4, 2))
 
         x = input_scores
-        x = Dense(100, activation='relu')(x)
-        x = Dense(100, activation='relu')(x)
+        x = Dense(64, activation='relu')(x)
+        x = Dense(64, activation='relu')(x)
         x = Flatten()(x)
         x = concatenate([x, input_heights])
-        x = Dense(100)(x)
+        x = Dense(512, activation='relu')(x)
+        x = Dense(512, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=[input_heights, input_scores], outputs=output)
