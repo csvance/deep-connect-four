@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, concatenate
+from keras.layers import Dense, Flatten, Input, Conv2D, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -57,19 +57,16 @@ class C4Model(object):
         self.learning_rate_start = learning_rate_start
         self.steps = 0
 
-        input_heights = Input(shape=(7,))
-        input_scores = Input(shape=(7, 4, 2))
-
+        input_scores = Input(shape=(6, 7, 2))
         x = input_scores
-        x = Dense(64, activation='relu')(x)
-        x = Dense(64, activation='relu')(x)
+        x = Conv2D(64, (4, 4), activation='relu')(x)
+        x = Conv2D(128, (1, 1), activation='relu')(x)
+        x = Conv2D(128, (1, 1), activation='relu')(x)
         x = Flatten()(x)
-        x = concatenate([x, input_heights])
-        x = Dense(512, activation='relu')(x)
         x = Dense(512, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
-        model = Model(inputs=[input_heights, input_scores], outputs=output)
+        model = Model(inputs=input_scores, outputs=output)
         self.optimizer = Adam(lr=learning_rate_start)
         model.compile(optimizer=self.optimizer, loss='mse')
         model.summary()

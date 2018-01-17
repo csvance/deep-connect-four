@@ -307,10 +307,10 @@ class C4State(object):
                 if col == C4SlotState.EMPTY.value:
                     pass
                 elif col == C4SlotState.SELF.value:
-                    ret_state[row_idx][col_idx][0] = 0
+                    ret_state[row_idx][col_idx][0] = 1
                 elif col == C4SlotState.ENEMY.value:
                     ret_state[row_idx][col_idx][1] = 1
-        return ret_state
+        return np.array([ret_state])
 
     def column_height(self) -> list:
         heights = []
@@ -327,7 +327,8 @@ class C4State(object):
         return heights
 
     def state_representation(self):
-        return [np.array([self.column_height()]) / 5., self.move_values()]
+        # return [np.array([self.column_height()]) / 5., self.move_values()]
+        return self.one_hot()
 
 
 class C4Game(object):
