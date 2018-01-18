@@ -63,17 +63,15 @@ class C4Model(object):
         input_scores = Input(shape=(7, 4, 2))
 
         x_1 = input_board
-        x_1 = Conv2D(128, (4, 4), activation='relu')(x_1)
-        x_1 = Conv2D(128, (1, 1), activation='relu')(x_1)
-        x_1 = Conv2D(128, (1, 1), activation='relu')(x_1)
+        x_1 = Conv2D(256, (4, 4), activation='relu')(x_1)
+        x_1 = Conv2D(256, (1, 1), activation='relu')(x_1)
         x_1 = Flatten()(x_1)
 
         x_2 = input_heights
 
         x_3 = input_scores
-        x_3 = Dense(64, activation='relu')(x_3)
-        x_3 = Dense(64, activation='relu')(x_3)
-        x_3 = Dense(64, activation='relu')(x_3)
+        x_3 = Dense(128, activation='relu')(x_3)
+        x_3 = Dense(128, activation='relu')(x_3)
         x_3 = Flatten()(x_3)
 
         x = concatenate([x_1, x_2, x_3])
