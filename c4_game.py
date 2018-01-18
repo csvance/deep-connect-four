@@ -327,8 +327,7 @@ class C4State(object):
         return heights
 
     def state_representation(self):
-        # return [np.array([self.column_height()]) / 5., self.move_values()]
-        return self.one_hot()
+        return [self.one_hot(), np.array([self.column_height()]) / 5., self.move_values()]
 
 
 class C4Game(object):
@@ -449,9 +448,21 @@ class C4Game(object):
         enemy_scores.sort(key=lambda x: x[1], reverse=True)
 
         if self_scores[0][1] >= enemy_scores[0][1]:
-            return C4Action(self_scores[0][0])
+            alike_scores = []
+            for score in self_scores:
+                if score[1] == self_scores[0][1]:
+                    alike_scores.append(score[0])
+
+            choice = np.random.choice(alike_scores)
+            return C4Action(choice)
         else:
-            return C4Action(enemy_scores[0][0])
+            alike_scores = []
+            for score in enemy_scores:
+                if score[1] == enemy_scores[0][1]:
+                    alike_scores.append(score[0])
+
+            choice = np.random.choice(alike_scores)
+            return C4Action(choice)
 
     def display(self) -> str:
 

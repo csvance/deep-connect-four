@@ -47,6 +47,7 @@ class C4Model(object):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
         self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
+        self.win_loss = Ramp(start=1., end=0.5, steps=gamma_steps)
 
         self.reward_memory = []
         self.clipped = 0.
@@ -57,18 +58,32 @@ class C4Model(object):
         self.learning_rate_start = learning_rate_start
         self.steps = 0
 
-        input_scores = Input(shape=(6, 7, 2))
-        x = input_scores
-        x = Conv2D(64, (4, 4), activation='relu')(x)
-        x = Conv2D(128, (1, 1), activation='relu')(x)
-        x = Conv2D(128, (1, 1), activation='relu')(x)
-        x = Flatten()(x)
+        input_board = Input(shape=(6, 7, 2))
+        input_heights = Input(shape=(7,))
+        input_scores = Input(shape=(7, 4, 2))
+
+        x_1 = input_board
+        x_1 = Conv2D(128, (4, 4), activation='relu')(x_1)
+        x_1 = Conv2D(128, (1, 1), activation='relu')(x_1)
+        x_1 = Conv2D(128, (1, 1), activation='relu')(x_1)
+        x_1 = Flatten()(x_1)
+
+        x_2 = input_heights
+
+        x_3 = input_scores
+        x_3 = Dense(64, activation='relu')(x_3)
+        x_3 = Dense(64, activation='relu')(x_3)
+        x_3 = Dense(64, activation='relu')(x_3)
+        x_3 = Flatten()(x_3)
+
+        x = concatenate([x_1, x_2, x_3])
+        x = Dense(256, activation='relu')(x)
         x = Dense(512, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
-        model = Model(inputs=input_scores, outputs=output)
+        model = Model(inputs=[input_board, input_heights, input_scores], outputs=output)
         self.optimizer = Adam(lr=learning_rate_start)
-        model.compile(optimizer=self.optimizer, loss='mse')
+        model.compile(optimizer=self.optimizer, loss='mse', metrics=['mae'])
         model.summary()
         self._model = model
 
@@ -128,6 +143,7 @@ class C4Model(object):
 
         self.epsilon.step(1)
         self.gamma.step(1)
+        self.win_loss.step(1)
 
         # Calculate learning rate based on gamma
         if self.gamma.start != self.gamma.end:

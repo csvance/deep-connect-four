@@ -130,7 +130,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
     red_wins = 0
     black_wins = 0
 
-    stats_headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'avg', 'med', 'std', 'clipped',
+    stats_headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'mae', 'avg', 'med', 'std', 'clipped',
                      'gamma']
     stats_log_file = open('stats_log.csv', 'w')
     stats_log_writer = csv.DictWriter(stats_log_file, fieldnames=stats_headers)
@@ -156,7 +156,10 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
         current_team = c4.current_turn()
         valid_moves = c4.state.valid_moves()
 
-        move = c4ai.predict(c4.state, valid_moves=valid_moves)
+        if current_team == C4Team.BLACK:
+            move = c4ai.predict(c4.state, valid_moves=valid_moves)
+        elif current_team == C4Team.RED:
+            move = c4.best_action(valid_moves=valid_moves)
         result = c4.action(move)
 
         if result == C4MoveResult.VICTORY:
@@ -168,19 +171,21 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
 
             # Train
             if not c4.duplicate:
-                training_data = c4.sample(batch_size=c4.turn + 1)
+                training_data = c4.sample(batch_size=c4.turn + 1, win_loss_proportion=c4ai.win_loss.value)
             else:
                 print("Duplicate.")
                 training_data = None
 
             if training_data is not None:
 
-                loss_count = 0
+                step_count = 0
                 loss_sum = 0.
+                mae_sum = 0.
                 for state in training_data:
                     history = c4ai.train(state)
-                    loss_count += 1
                     loss_sum += history.history['loss'][0]
+                    mae_sum += history.history['mean_absolute_error'][0]
+                    step_count += 1
 
                 min, max, avg, stdev, med, clipped, steps = c4ai.stats()
 
@@ -189,7 +194,8 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                 stats['black_wins'] = black_wins
                 stats['epsilon'] = c4ai.epsilon.value
                 stats['game_length'] = (c4.turn + 1) / 42.
-                stats['loss'] = loss_sum / loss_count
+                stats['loss'] = loss_sum / step_count
+                stats['mae'] = mae_sum / step_count
                 stats['avg'] = avg
                 stats['med'] = med
                 stats['std'] = stdev
@@ -198,8 +204,9 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                 stats_log_writer.writerow(stats)
 
                 print("Red: %d Black %d Steps: %d" % (red_wins, black_wins, steps))
-                print("Epsilon: %f Gamma: %f Loss: %f, LR: %f" % (
-                    c4ai.epsilon.value, c4ai.gamma.value, loss_sum / loss_count, c4ai.optimizer.lr))
+                print("Epsilon: %f Gamma: %f Loss: %f mae: %f LR: %f" % (
+                    c4ai.epsilon.value, c4ai.gamma.value, loss_sum / step_count, mae_sum / step_count,
+                    c4ai.optimizer.lr))
                 print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
                 print(c4.display())
                 print("")
@@ -211,10 +218,8 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
 
                     best_wins, ai_wins = ai_vs_best(c4, c4ai)
                     ai_win_rate = ai_wins / (best_wins + ai_wins)
-
                     perf_log_writer.writerow({'ai_win_rate': ai_win_rate})
                     perf_log_file.flush()
-
                     print("AI won %f%% of games" % ai_win_rate)
 
                     if c4ai.steps >= training_steps:
