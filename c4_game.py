@@ -377,7 +377,7 @@ class C4Game(object):
                 self.last_victory.invert_perspective()
 
             self.last_victory = self.state.copy()
-            reward = 0.5
+            reward = 1.
             done = True
         elif move_result == C4MoveResult.TIE:
             reward = 0.
@@ -425,7 +425,14 @@ class C4Game(object):
 
         return move_result
 
-    def best_action(self, valid_moves: list):
+    def best_action(self, valid_moves: list, epsilon: float = 0.):
+
+        if np.random.rand() <= epsilon:
+            potential_moves = []
+            for idx in range(0, len(valid_moves)):
+                if valid_moves[idx] == 1:
+                    potential_moves.append(C4Action(idx))
+            return np.random.choice(potential_moves)
 
         self_scores = []
         enemy_scores = []

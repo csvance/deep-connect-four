@@ -159,7 +159,8 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
         if current_team == C4Team.BLACK:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
         elif current_team == C4Team.RED:
-            move = c4.best_action(valid_moves=valid_moves)
+            # move = c4.best_action(valid_moves=valid_moves)
+            move = c4ai.predict(c4.state, valid_moves=valid_moves)
         result = c4.action(move)
 
         if result == C4MoveResult.VICTORY:

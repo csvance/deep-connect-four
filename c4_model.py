@@ -1,10 +1,9 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, Conv2D, concatenate
+from keras.layers import Dense, Flatten, Input, SeparableConv2D, GlobalMaxPooling2D, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
-
 from c4_game import C4Action, C4ActionResult, C4State
 
 
@@ -42,12 +41,12 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 500000, epsilon_min=0.05,
-                 gamma=0.0, gamma_steps: int = 1000000, gamma_max: float = 0.9, learning_rate=0.001,
-                 learning_rate_start=0.0025, k: int = 2):
+                 gamma=0.0, gamma_steps: int = 1000000, gamma_max: float = 0.9, learning_rate=0.0025,
+                 learning_rate_start=0.005, k: int = 2):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
         self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
-        self.win_loss = Ramp(start=1., end=0.5, steps=gamma_steps)
+        self.win_loss = Ramp(start=1., end=0.75, steps=gamma_steps)
 
         self.reward_memory = []
         self.clipped = 0.
@@ -62,10 +61,9 @@ class C4Model(object):
         input_heights = Input(shape=(7,))
         input_scores = Input(shape=(7, 4, 2))
 
-        x_1 = input_board
-        x_1 = Conv2D(256, (4, 4), activation='relu')(x_1)
-        x_1 = Conv2D(256, (1, 1), activation='relu')(x_1)
-        x_1 = Flatten()(x_1)
+        # x_1 = input_board
+        # x_1 = SeparableConv2D(128, (4, 4), activation='relu')(x_1)
+        # x_1 = Flatten()(x_1)
 
         x_2 = input_heights
 
@@ -74,8 +72,7 @@ class C4Model(object):
         x_3 = Dense(128, activation='relu')(x_3)
         x_3 = Flatten()(x_3)
 
-        x = concatenate([x_1, x_2, x_3])
-        x = Dense(256, activation='relu')(x)
+        x = concatenate([x_2, x_3])
         x = Dense(512, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
