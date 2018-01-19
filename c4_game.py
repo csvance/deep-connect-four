@@ -327,7 +327,7 @@ class C4State(object):
         return heights
 
     def state_representation(self):
-        return [self.one_hot(), np.array([self.column_height()]) / 5., self.move_values()]
+        return [self.move_values(), np.array([self.column_height()]) / 5.]
 
 
 class C4Game(object):
