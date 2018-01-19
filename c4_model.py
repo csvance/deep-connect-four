@@ -45,39 +45,41 @@ class Ramp(object):
 
 
 class C4Model(object):
-    def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 500000, epsilon_min=0.05,
-                 gamma=0.0, gamma_steps: int = 0, gamma_max: float = 0.9, learning_rate=0.0025,
-                 learning_rate_start=0.0025, k: int = 2):
+    def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 300000, epsilon_min=0.05,
+                 gamma=0.0, gamma_steps: int = 200000, gamma_max: float = 0.9, learning_rate=0.0025,
+                 learning_rate_start=0.005, k: int = 2):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
-        self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
+        self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps, delay=epsilon_steps)
         self.win_loss = Ramp(start=1., end=0.75, steps=gamma_steps)
+        self.learning_rate = Ramp(start=learning_rate_start, end=learning_rate, steps=gamma_steps, delay=epsilon_steps)
 
         self.reward_memory = []
         self.clipped = 0.
         self.k = k
         self.k_self = int(k / 2)
         self.k_enemy = int(k / 2) + (k % 2)
-        self.learning_rate = learning_rate
-        self.learning_rate_start = learning_rate_start
         self.steps = 0
 
         input_board = Input(shape=(6, 7, 2))
         input_heights = Input(shape=(7,))
-        input_scores = Input(shape=(7, 4, 2))
+        input_scores = Input(shape=(7, 8, 2))
 
-        # x_1 = input_board
-        # x_1 = SeparableConv2D(128, (4, 4), activation='relu')(x_1)
-        # x_1 = Flatten()(x_1)
+        x_1 = input_board
+        x_1 = SeparableConv2D(128, 4, activation='relu')(x_1)
+        x_1 = SeparableConv2D(128, 1, activation='relu')(x_1)
+        x_1 = SeparableConv2D(128, 1, activation='relu')(x_1)
+        x_1 = Flatten()(x_1)
 
         x_2 = input_heights
 
         x_3 = input_scores
-        x_3 = Dense(128, activation='relu')(x_3)
-        x_3 = Dense(128, activation='relu')(x_3)
+        x_3 = Dense(64, activation='relu')(x_3)
+        x_3 = Dense(64, activation='relu')(x_3)
+        x_3 = Dense(64, activation='relu')(x_3)
         x_3 = Flatten()(x_3)
 
-        x = concatenate([x_2, x_3])
+        x = concatenate([x_1, x_2, x_3])
         x = Dense(512, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
@@ -144,17 +146,9 @@ class C4Model(object):
         self.epsilon.step(1)
         self.gamma.step(1)
         self.win_loss.step(1)
+        self.learning_rate.step(1)
 
-        # Calculate learning rate based on gamma
-        if self.gamma.start != self.gamma.end:
-            new_learning_rate = (1. - abs(self.gamma.end - self.gamma.value) / abs(
-                self.gamma.start - self.gamma.end)) * self.learning_rate + \
-                                (abs(self.gamma.end - self.gamma.value) / abs(
-                                    self.gamma.start - self.gamma.end)) * self.learning_rate_start
-        else:
-            new_learning_rate = self.learning_rate
-
-        self.optimizer.lr = new_learning_rate
+        self.optimizer.lr = self.learning_rate.value
         self.steps += 1
 
         return history

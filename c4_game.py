@@ -291,8 +291,8 @@ class C4State(object):
             e = [min(3., e_down), min(3., e_right + e_left), min(3., e_up_right + e_down_left),
                  min(3., e_down_right + e_up_left)]
 
-            self_values.append(ss)
-            enemy_values.append(ee)
+            self_values.append(ss + s)
+            enemy_values.append(ee + e)
 
         ret_list = np.array([self_values, enemy_values])
         ret_list = ret_list.swapaxes(0, 2)
@@ -444,9 +444,9 @@ class C4Game(object):
 
         for action_idx, action in enumerate(move_values):
             self_max_index = action_idx
-            self_max_value = np.amax(action[:, 0])
+            self_max_value = np.amax(action[:4, 0])
             enemy_max_index = action_idx
-            enemy_max_value = np.amax(action[:, 1])
+            enemy_max_value = np.amax(action[:4, 1])
 
             self_scores.append([self_max_index, self_max_value])
             enemy_scores.append([enemy_max_index, enemy_max_value])
