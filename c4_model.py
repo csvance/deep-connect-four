@@ -26,7 +26,12 @@ class Ramp(object):
         ramp_vertical = self.end - self.start
         ramp_horizontal = self.steps
 
-        m = ramp_vertical / ramp_horizontal
+        try:
+            m = ramp_vertical / ramp_horizontal
+        except ZeroDivisionError:
+            self.value = self.end
+            return self.end
+
         x = (self._steps_processed - self.delay)
         b = self.start
         y = m * x + b
@@ -41,8 +46,8 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 500000, epsilon_min=0.05,
-                 gamma=0.0, gamma_steps: int = 1000000, gamma_max: float = 0.9, learning_rate=0.0025,
-                 learning_rate_start=0.005, k: int = 2):
+                 gamma=0.0, gamma_steps: int = 0, gamma_max: float = 0.9, learning_rate=0.0025,
+                 learning_rate_start=0.0025, k: int = 2):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
         self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
