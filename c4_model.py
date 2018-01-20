@@ -55,7 +55,7 @@ class C4Model(object):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
         self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
-        self.win_loss = Ramp(start=1., end=0.75, steps=gamma_steps)
+        self.win_loss = Ramp(start=1., end=0.25, steps=gamma_steps)
         self.learning_rate = Ramp(start=learning_rate_start, end=learning_rate, steps=gamma_steps,
                                   delay=self.gamma.delay)
 
