@@ -70,15 +70,10 @@ class C4Model(object):
         input_heights = Input(shape=(7,))
         input_scores = Input(shape=(7, 8, 2))
 
-        x_1 = input_scores
-        x_1 = Dense(128, activation='relu')(x_1)
-        x_1 = Dense(128, activation='relu')(x_1)
-        x_1 = Flatten()(x_1)
-
-        x_2 = input_heights
-
-        x = concatenate([x_2, x_1])
-        x = Dense(512, activation='relu')(x)
+        x = input_scores
+        x = Dense(128, activation='relu')(x)
+        x = Dense(128, activation='relu')(x)
+        x = Flatten()(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=[input_scores, input_heights], outputs=output)

@@ -188,6 +188,8 @@ class C4State(object):
 
     def move_values(self) -> np.ndarray:
 
+        old_state = self.state.copy()
+
         def move_value(vector):
             self_in_a_row = 0.
             self_seperated = 0.
@@ -299,6 +301,8 @@ class C4State(object):
         ret_list = ret_list.swapaxes(0, 2)
         ret_list = ret_list.swapaxes(0, 1)
 
+        assert np.array_equal(self.state, old_state)
+
         return np.array([ret_list]) / 3.
 
     def one_hot(self) -> np.ndarray:
@@ -346,10 +350,13 @@ class C4Game(object):
 
         self.first_turn = C4Team.RED
 
-        self.normal_memories = deque(maxlen=10000)
-        self.win_loss_memories = deque(maxlen=200)
+        self.normal_memories = deque(maxlen=50000)
+        self.win_loss_memories = deque(maxlen=1000)
 
-    def reset(self, first_turn: C4Team = None):
+        self.red_score = 0.
+        self.black_score = 0.
+
+    def reset(self):
         self.turn = 0
         self.state = C4State()
         self.winner = None
@@ -362,6 +369,9 @@ class C4Game(object):
 
         self.red_memories = []
         self.black_memories = []
+
+        self.red_score = 0.
+        self.black_score = 0.
 
     def action(self, action: C4Action) -> C4MoveResult:
 
@@ -419,6 +429,16 @@ class C4Game(object):
 
                     self.normal_memories.extend(self.red_memories[0:-1])
                     self.normal_memories.extend(self.black_memories[0:-1])
+
+        # Compute Score
+        move_values = self.state.move_values().copy()
+        move_values = move_values[0]
+
+        for action_idx, action in enumerate(move_values):
+            if self.current_turn() == C4Team.RED:
+                self.red_score += np.sum(action[:, 0])
+            elif self.current_turn() == C4Team.BLACK:
+                self.black_score += np.sum(action[:, 0])
 
         if move_result == C4MoveResult.NONE:
             self.turn += 1
@@ -506,9 +526,8 @@ class C4Game(object):
             else:
                 return C4Team.RED
 
-    def sample(self, batch_size=21, win_loss_proportion=0.33, sample_mult=1.):
+    def sample(self, batch_size=32, win_loss_proportion=0.33):
 
-        batch_size = int(batch_size * sample_mult)
         win_loss_batch_size = int(batch_size * win_loss_proportion)
         normal_batch_size = batch_size - win_loss_batch_size
 
