@@ -172,7 +172,8 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
 
             # Train
             if not c4.duplicate:
-                training_data = c4.sample(batch_size=c4.turn + 1, win_loss_proportion=c4ai.win_loss.value)
+                training_data = c4.sample(batch_size=c4.turn + 1, win_loss_proportion=c4ai.win_loss.value,
+                                          sample_mult=c4ai.sample_multiplier.value)
             else:
                 print("Duplicate.")
                 training_data = None
@@ -252,7 +253,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon-min', type=float, default=0.05)
     parser.add_argument('--training-steps', type=int, default=1000000)
     parser.add_argument('--gamma', type=float, default=0.0)
-    parser.add_argument('--gamma-steps', type=int, default=100000)
+    parser.add_argument('--gamma-steps', type=int, default=0)
     parser.add_argument('--gamma-max', type=float, default=0.9)
     parser.add_argument('--k', type=int, default=2)
     parser.add_argument('--verbose', action='store_true')

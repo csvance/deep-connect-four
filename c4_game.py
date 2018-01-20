@@ -1,7 +1,8 @@
+import pickle
 import random
 from collections import deque
 from enum import Enum, unique
-import pickle
+
 import numpy as np
 
 
@@ -505,8 +506,9 @@ class C4Game(object):
             else:
                 return C4Team.RED
 
-    def sample(self, batch_size=21, win_loss_proportion=0.33):
+    def sample(self, batch_size=21, win_loss_proportion=0.33, sample_mult=1.):
 
+        batch_size = int(batch_size * sample_mult)
         win_loss_batch_size = int(batch_size * win_loss_proportion)
         normal_batch_size = batch_size - win_loss_batch_size
 

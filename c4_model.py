@@ -1,10 +1,10 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, SeparableConv2D, GlobalMaxPooling2D, BatchNormalization, concatenate, \
-    Activation
+from keras.layers import Dense, Flatten, Input, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
+
 from c4_game import C4Action, C4ActionResult, C4State
 
 
@@ -50,14 +50,15 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 1000000, epsilon_min=0.05,
-                 gamma=0.0, gamma_steps: int = 0, gamma_max: float = 0.9, learning_rate=0.0001,
-                 learning_rate_start=0.0025, k: int = 2):
+                 gamma=0.0, gamma_steps: int = 0, gamma_max: float = 0.9, learning_rate=0.01,
+                 learning_rate_start=0.01, k: int = 2):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
         self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
-        self.win_loss = Ramp(start=1., end=0.25, steps=gamma_steps)
+        self.win_loss = Ramp(start=1., end=0.75, steps=gamma_steps)
         self.learning_rate = Ramp(start=learning_rate_start, end=learning_rate, steps=gamma_steps,
                                   delay=self.gamma.delay)
+        self.sample_multiplier = Ramp(start=1., end=4., steps=epsilon_steps)
 
         self.reward_memory = []
         self.clipped = 0.
@@ -78,7 +79,6 @@ class C4Model(object):
 
         x = concatenate([x_2, x_1])
         x = Dense(512, activation='relu')(x)
-        x = BatchNormalization()(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=[input_scores, input_heights], outputs=output)
@@ -145,6 +145,7 @@ class C4Model(object):
         self.gamma.step(1)
         self.win_loss.step(1)
         self.learning_rate.step(1)
+        self.sample_multiplier.step(1)
 
         self.optimizer.lr = self.learning_rate.value
         self.steps += 1
