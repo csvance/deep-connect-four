@@ -100,7 +100,7 @@ def ai_vs_best(c4: C4Game, c4ai: C4Model, games: int = 100):
     while True:
 
         if best_wins + ai_wins >= games:
-            return best_wins, ai_wins, best_scores, ai_scores
+            return best_wins, ai_wins, np.sum(best_scores) / games, np.sum(ai_scores) / games
 
         current_team = c4.current_turn()
         valid_moves = c4.state.valid_moves()
@@ -143,7 +143,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
     stats_log_writer = csv.DictWriter(stats_log_file, fieldnames=stats_headers)
     stats_log_writer.writeheader()
 
-    perf_headers = ['ai_win_rate', 'score']
+    perf_headers = ['ai_win_rate', 'ai_score', 'best_score', 'diff']
     perf_log_file = open('perf_log.csv', 'w')
     perf_log_writer = csv.DictWriter(perf_log_file, fieldnames=perf_headers)
     perf_log_writer.writeheader()
@@ -166,7 +166,6 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
         if current_team == C4Team.BLACK:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
         elif current_team == C4Team.RED:
-            # move = c4.best_action(valid_moves=valid_moves)
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
         result = c4.action(move)
 
@@ -179,7 +178,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
 
             # Train
             if not c4.duplicate:
-                training_data = c4.sample(win_loss_proportion=c4ai.win_loss.value)
+                training_data = c4.sample()
             else:
                 print("Duplicate.")
                 training_data = None
@@ -227,7 +226,8 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                     best_wins, ai_wins, best_score, ai_score = ai_vs_best(c4, c4ai)
                     ai_win_rate = ai_wins / (best_wins + ai_wins)
                     perf_log_writer.writerow(
-                        {'ai_win_rate': ai_win_rate, 'score': np.sum(ai_score) - np.sum(best_score)})
+                        {'ai_win_rate': ai_win_rate, 'ai_score': ai_score, 'best_score': best_score,
+                         'diff': ai_score - best_score})
                     perf_log_file.flush()
                     print("AI won %f%% of games" % ai_win_rate)
 

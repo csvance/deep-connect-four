@@ -74,6 +74,7 @@ class C4Model(object):
         x = Dense(128, activation='relu')(x)
         x = Dense(128, activation='relu')(x)
         x = Flatten()(x)
+        x = Dense(256, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=[input_scores, input_heights], outputs=output)
@@ -88,7 +89,7 @@ class C4Model(object):
             set_session(tf.Session(config=config))
 
     # Data is the game state, labels are the action taken
-    def train(self, result: C4ActionResult):
+    def train(self, result: C4ActionResult, clip=True):
 
         positive_reward_sum = 0.
         negative_reward_sum = 0.
@@ -122,12 +123,13 @@ class C4Model(object):
             target = result.reward
 
         # Clip reward
-        if target > 1.:
-            self.clipped += abs(1 - target)
-            target = 1.
-        elif target < -1.:
-            self.clipped += abs(-1 - target)
-            target = -1.
+        if clip:
+            if target > 1.:
+                self.clipped += abs(1 - target)
+                target = 1.
+            elif target < -1.:
+                self.clipped += abs(-1 - target)
+                target = -1.
 
         self.reward_memory.append(target)
 

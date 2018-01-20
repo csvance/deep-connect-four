@@ -350,11 +350,13 @@ class C4Game(object):
 
         self.first_turn = C4Team.RED
 
-        self.normal_memories = deque(maxlen=50000)
-        self.win_loss_memories = deque(maxlen=1000)
+        self.memories = deque(maxlen=10000)
 
         self.red_score = 0.
         self.black_score = 0.
+
+        self._red_last_score = 0.
+        self._black_last_score = 0.
 
     def reset(self):
         self.turn = 0
@@ -372,6 +374,9 @@ class C4Game(object):
 
         self.red_score = 0.
         self.black_score = 0.
+
+        self._red_last_score = 0.
+        self._black_last_score = 0.
 
     def action(self, action: C4Action) -> C4MoveResult:
 
@@ -411,11 +416,8 @@ class C4Game(object):
                     self.black_memories[-1].reward = -1.
                     self.black_memories[-1].done = True
 
-                    self.win_loss_memories.append(self.red_memories[-1])
-                    self.win_loss_memories.append(self.black_memories[-1])
-
-                    self.normal_memories.extend(self.red_memories[0:-1])
-                    self.normal_memories.extend(self.black_memories[0:-1])
+                    self.memories.extend(self.red_memories)
+                    self.memories.extend(self.black_memories)
 
             elif self.current_turn() == C4Team.BLACK:
                 self.black_memories.append(action_result)
@@ -424,21 +426,30 @@ class C4Game(object):
                     self.red_memories[-1].reward = -1.
                     self.red_memories[-1].done = True
 
-                    self.win_loss_memories.append(self.red_memories[-1])
-                    self.win_loss_memories.append(self.black_memories[-1])
-
-                    self.normal_memories.extend(self.red_memories[0:-1])
-                    self.normal_memories.extend(self.black_memories[0:-1])
+                    self.memories.extend(self.red_memories)
+                    self.memories.extend(self.black_memories)
 
         # Compute Score
-        move_values = self.state.move_values().copy()
-        move_values = move_values[0]
+        move_values = self.state.move_values().copy()[0]
 
+        r_s = 0
+        b_s = 0
         for action_idx, action in enumerate(move_values):
             if self.current_turn() == C4Team.RED:
-                self.red_score += np.sum(action[:, 0])
+                v_ss = action[:4, 0]
+                v_s = action[4:8, 0]
+                r_s += np.power(np.max(v_ss * 4), 2) + np.max(v_s * 4)
             elif self.current_turn() == C4Team.BLACK:
-                self.black_score += np.sum(action[:, 0])
+                v_ss = action[:4, 0]
+                v_s = action[4:8, 0]
+                b_s += np.power(np.max(v_ss * 4), 2) + np.max(v_s * 4)
+
+        if self.current_turn() == C4Team.RED:
+            self.red_score += r_s
+            self._red_last_score = r_s
+        elif self.current_turn() == C4Team.BLACK:
+            self.black_score += b_s
+            self._black_last_score = b_s
 
         if move_result == C4MoveResult.NONE:
             self.turn += 1
@@ -526,30 +537,16 @@ class C4Game(object):
             else:
                 return C4Team.RED
 
-    def sample(self, batch_size=32, win_loss_proportion=0.33):
+    def sample(self, batch_size=32):
 
-        win_loss_batch_size = int(batch_size * win_loss_proportion)
-        normal_batch_size = batch_size - win_loss_batch_size
-
-        if len(self.normal_memories) < batch_size:
+        if len(self.memories) < batch_size:
             return None
-        if len(self.win_loss_memories) < win_loss_batch_size:
-            return None
-
-        normal_memories = random.sample(self.normal_memories, normal_batch_size)
-        win_loss_memories = random.sample(self.win_loss_memories, win_loss_batch_size)
-
-        combined_batch = []
-        combined_batch.extend(normal_memories)
-        combined_batch.extend(win_loss_memories)
 
         # Shuffle
-        return random.sample(combined_batch, len(combined_batch))
+        return random.sample(self.memories, batch_size)
 
     def save(self):
-        pickle.dump(self.win_loss_memories, open('win_loss_memories.p', 'wb'))
-        pickle.dump(self.normal_memories, open('normal_memories.p', 'wb'))
+        pickle.dump(self.memories, open('memories.p', 'wb'))
 
     def load(self):
-        self.win_loss_memories = pickle.load(open('win_loss_memories.p', 'rb'))
-        self.normal_memories = pickle.load(open('normal_memories.p', 'rb'))
+        self.memories = pickle.load(open('memories.p', 'rb'))
