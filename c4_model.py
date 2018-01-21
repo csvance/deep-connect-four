@@ -5,7 +5,7 @@ from keras.layers import Dense, Flatten, Input, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 
-from c4_game import C4Action, C4Experience, C4State
+from c4_game import C4Action, C4Experience, C4State, C4MoveResult
 
 
 class Ramp(object):
@@ -49,12 +49,12 @@ class Ramp(object):
 
 
 class C4Model(object):
-    def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 1000000, epsilon_min=0.05,
-                 gamma=0.0, gamma_steps: int = 0, gamma_max: float = 0.9, learning_rate=0.01,
+    def __init__(self, use_gpu=True, epsilon_start: float = 1., epsilon_steps: int = 1000000, epsilon_end=0.05,
+                 gamma_start=0.0, gamma_steps: int = 0, gamma_end: float = 0.9, learning_rate=0.01,
                  learning_rate_start=0.01):
 
-        self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
-        self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
+        self.epsilon = Ramp(start=epsilon_start, end=epsilon_end, steps=epsilon_steps)
+        self.gamma = Ramp(start=gamma_start, end=gamma_end, steps=gamma_steps)
         self.win_loss = Ramp(start=1., end=0.75, steps=gamma_steps)
         self.learning_rate = Ramp(start=learning_rate_start, end=learning_rate, steps=gamma_steps,
                                   delay=self.gamma.delay)
@@ -89,7 +89,6 @@ class C4Model(object):
     def train(self, experience: C4Experience, clip=True):
 
         if not experience.terminal:
-
             new_state = experience.new_state.copy()
 
             # Invert state perspective to match the enemy agent
@@ -101,24 +100,26 @@ class C4Model(object):
 
             # Apply the enemy action to advance the state, invert the perspective to match friendly agent
             move_result = new_state.move(action)
-            new_state.invert_perspective()
+            if move_result != C4MoveResult.VICTORY:
+                new_state.invert_perspective()
 
-            # Here is where our discounted future reward comes from (next friendly state in our perspective)
-            prediction = self._model.predict(new_state.state_representation())[0]
-            reward = np.amax(prediction)
+                # Here is where our discounted future reward comes from (next friendly state in our perspective)
+                prediction = self._model.predict(new_state.state_representation())[0]
 
-            # Calculate discounted future reward
-            target = experience.reward + self.gamma.value * reward
+                # Calculate discounted future reward
+                target = experience.reward + self.gamma.value * np.amax(prediction)
+            elif C4MoveResult.VICTORY:
+                target = -1.
+            else:
+                target = 0.
         else:
             target = experience.reward
 
         # Clip reward
         if clip:
             if target > 1.:
-                self.clipped += abs(1 - target)
                 target = 1.
             elif target < -1.:
-                self.clipped += abs(-1 - target)
                 target = -1.
 
         self.reward_memory.append(target)

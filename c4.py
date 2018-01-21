@@ -1,8 +1,8 @@
 import argparse
+import csv
 import os
 
 import numpy as np
-import csv
 
 from c4_game import C4Game, C4MoveResult, C4Team, C4Action
 from c4_model import C4Model
@@ -10,7 +10,7 @@ from c4_model import C4Model
 
 def human_vs_human(weights_file: str):
     c4 = C4Game()
-    c4ai = C4Model(epsilon=0., epsilon_min=0.)
+    c4ai = C4Model(epsilon_start=0., epsilon_end=0.)
     c4ai.load(weights_file)
 
     print(c4.display())
@@ -52,7 +52,7 @@ def human_vs_human(weights_file: str):
 
 def human_vs_ai(weights_file: str):
     c4 = C4Game()
-    c4ai = C4Model(epsilon=0., epsilon_min=0.)
+    c4ai = C4Model(epsilon_start=0., epsilon_end=0.)
     c4ai.load(weights_file)
 
     print(c4.display())
@@ -130,26 +130,26 @@ def ai_vs_best(c4: C4Game, c4ai: C4Model, games: int = 100):
             continue
 
 
-def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min: float, training_steps: int,
-             gamma: float, gamma_steps: int, gamma_max: float):
+def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilon_end: float, training_steps: int,
+             gamma_start: float, gamma_steps: int, gamma_end: float):
     game_no = 0
     red_wins = 0
     black_wins = 0
 
-    stats_headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'mae', 'avg', 'med', 'std', 'clipped',
+    stats_headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'mae', 'avg', 'med', 'std',
                      'gamma']
     stats_log_file = open('stats_log.csv', 'w')
     stats_log_writer = csv.DictWriter(stats_log_file, fieldnames=stats_headers)
     stats_log_writer.writeheader()
 
-    perf_headers = ['ai_win_rate', 'ai_score', 'best_score', 'diff']
+    perf_headers = ['ai_win_rate']
     perf_log_file = open('perf_log.csv', 'w')
     perf_log_writer = csv.DictWriter(perf_log_file, fieldnames=perf_headers)
     perf_log_writer.writeheader()
 
     c4 = C4Game()
-    c4ai = C4Model(epsilon=epsilon, epsilon_steps=epsilon_steps, epsilon_min=epsilon_min,
-                   gamma=gamma, gamma_steps=gamma_steps, gamma_max=gamma_max)
+    c4ai = C4Model(epsilon_start=epsilon_start, epsilon_steps=epsilon_steps, epsilon_end=epsilon_end,
+                   gamma_start=gamma_start, gamma_steps=gamma_steps, gamma_end=gamma_end)
     try:
         if weights_file is not None:
             c4ai.load(weights_file)
@@ -166,7 +166,6 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
         elif current_team == C4Team.RED:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
-            # move = c4.best_action(valid_moves=valid_moves)
 
         result = c4.action(move)
 
@@ -208,7 +207,6 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                 stats['med'] = med
                 stats['std'] = stdev
                 stats['gamma'] = c4ai.gamma.value
-                stats['clipped'] = clipped
                 stats_log_writer.writerow(stats)
 
                 print("Red: %d Black %d Steps: %d" % (red_wins, black_wins, steps))
@@ -227,8 +225,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
                     best_wins, ai_wins, best_score, ai_score = ai_vs_best(c4, c4ai)
                     ai_win_rate = ai_wins / (best_wins + ai_wins)
                     perf_log_writer.writerow(
-                        {'ai_win_rate': ai_win_rate, 'ai_score': ai_score, 'best_score': best_score,
-                         'diff': ai_score - best_score})
+                        {'ai_win_rate': ai_win_rate})
                     perf_log_file.flush()
                     print("AI won %f%% of games" % ai_win_rate)
 
@@ -256,13 +253,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode')
     parser.add_argument('--weights-file', type=str, default="weights.h5")
-    parser.add_argument('--epsilon', type=float, default=1.)
+    parser.add_argument('--epsilon-start', type=float, default=1.)
     parser.add_argument('--epsilon-steps', type=int, default=100000)
-    parser.add_argument('--epsilon-min', type=float, default=0.05)
+    parser.add_argument('--epsilon-end', type=float, default=0.05)
     parser.add_argument('--training-steps', type=int, default=1000000)
-    parser.add_argument('--gamma', type=float, default=0.0)
+    parser.add_argument('--gamma-start', type=float, default=0.0)
     parser.add_argument('--gamma-steps', type=int, default=0)
-    parser.add_argument('--gamma-max', type=float, default=0.9)
+    parser.add_argument('--gamma-end', type=float, default=0.9)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
@@ -270,10 +267,10 @@ if __name__ == '__main__':
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     if args.mode == 'ava':
-        ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_steps=args.epsilon_steps,
-                 epsilon_min=args.epsilon_min, training_steps=args.training_steps, gamma=args.gamma,
+        ai_vs_ai(weights_file=args.weights_file, epsilon_start=args.epsilon_start, epsilon_steps=args.epsilon_steps,
+                 epsilon_end=args.epsilon_end, training_steps=args.training_steps, gamma_start=args.gamma_start,
                  gamma_steps=args.gamma_steps,
-                 gamma_max=args.gamma_max)
+                 gamma_end=args.gamma_end)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     elif args.mode == 'hvh':

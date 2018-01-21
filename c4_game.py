@@ -188,8 +188,6 @@ class C4State(object):
 
     def move_values(self) -> np.ndarray:
 
-        old_state = self.state.copy()
-
         def move_value(vector):
             self_in_a_row = 0.
             self_seperated = 0.
@@ -301,8 +299,6 @@ class C4State(object):
         ret_list = ret_list.swapaxes(0, 2)
         ret_list = ret_list.swapaxes(0, 1)
 
-        assert np.array_equal(self.state, old_state)
-
         return np.array([ret_list]) / 3.
 
     def one_hot(self) -> np.ndarray:
@@ -399,58 +395,35 @@ class C4Game(object):
             reward = 0.
             done = True
         elif move_result == C4MoveResult.INVALID:
-            reward = 0.
-            done = False
+            raise ValueError
         elif move_result == C4MoveResult.NONE:
             reward = 0.
             done = False
 
-        action_result = C4Experience(action=action, result=move_result,
-                                     old_state=old_state, new_state=new_state,
-                                     reward=reward, terminal=done)
+        experience = C4Experience(action=action, result=move_result,
+                                  old_state=old_state, new_state=new_state,
+                                  reward=reward, terminal=done)
 
         if not self.duplicate:
             if self.current_turn() == C4Team.RED:
-                self.red_memories.append(action_result)
+                self.red_memories.append(experience)
 
                 if move_result == C4MoveResult.VICTORY:
                     self.black_memories[-1].reward = -1.
-                    self.black_memories[-1].done = True
+                    self.black_memories[-1].terminal = True
 
                     self.memories.extend(self.red_memories)
                     self.memories.extend(self.black_memories)
 
             elif self.current_turn() == C4Team.BLACK:
-                self.black_memories.append(action_result)
+                self.black_memories.append(experience)
 
                 if move_result == C4MoveResult.VICTORY:
                     self.red_memories[-1].reward = -1.
-                    self.red_memories[-1].done = True
+                    self.red_memories[-1].terminal = True
 
                     self.memories.extend(self.red_memories)
                     self.memories.extend(self.black_memories)
-
-        # Compute Score
-        move_values = self.state.move_values().copy()[0]
-
-        r_s = 0
-        b_s = 0
-        for action_idx, action in enumerate(move_values):
-            if self.current_turn() == C4Team.RED:
-                v_ss = action[:4, 0]
-                v_s = action[4:8, 0]
-                r_s += np.power(np.max(v_ss * 4), 2) + np.max(v_s * 4)
-            elif self.current_turn() == C4Team.BLACK:
-                v_ss = action[:4, 0]
-                v_s = action[4:8, 0]
-                b_s += np.power(np.max(v_ss * 4), 2) + np.max(v_s * 4)
-
-        if self.current_turn() == C4Team.RED:
-            self.red_score += r_s
-            self._red_last_score = r_s
-        elif self.current_turn() == C4Team.BLACK:
-            self.black_score += b_s
-            self._black_last_score = b_s
 
         if move_result == C4MoveResult.NONE:
             self.turn += 1
