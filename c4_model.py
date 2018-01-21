@@ -50,15 +50,10 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon_start: float = 1., epsilon_steps: int = 1000000, epsilon_end=0.05,
-                 gamma_start=0.0, gamma_steps: int = 0, gamma_end: float = 0.9, learning_rate=0.01,
-                 learning_rate_start=0.01):
+                 gamma=0.9):
 
         self.epsilon = Ramp(start=epsilon_start, end=epsilon_end, steps=epsilon_steps)
-        self.gamma = Ramp(start=gamma_start, end=gamma_end, steps=gamma_steps)
-        self.win_loss = Ramp(start=1., end=0.75, steps=gamma_steps)
-        self.learning_rate = Ramp(start=learning_rate_start, end=learning_rate, steps=gamma_steps,
-                                  delay=self.gamma.delay)
-        self.sample_multiplier = Ramp(start=1., end=4., steps=epsilon_steps)
+        self.gamma = gamma
 
         self.reward_memory = []
         self.clipped = 0.
@@ -75,7 +70,7 @@ class C4Model(object):
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=[input_scores, input_heights], outputs=output)
-        self.optimizer = Adam(lr=learning_rate_start)
+        self.optimizer = Adam(lr=0.001)
         model.compile(optimizer=self.optimizer, loss='mse', metrics=['mae'])
         model.summary()
         self._model = model
@@ -86,7 +81,7 @@ class C4Model(object):
             set_session(tf.Session(config=config))
 
     # Data is the game state, labels are the action taken
-    def train(self, experience: C4Experience, clip=True):
+    def train(self, experience: C4Experience):
 
         if not experience.terminal:
             new_state = experience.new_state.copy()
@@ -107,7 +102,7 @@ class C4Model(object):
                 prediction = self._model.predict(new_state.state_representation())[0]
 
                 # Calculate discounted future reward
-                target = experience.reward + self.gamma.value * np.amax(prediction)
+                target = experience.reward + self.gamma * np.amax(prediction)
             elif C4MoveResult.VICTORY:
                 target = -1.
             else:
@@ -116,11 +111,10 @@ class C4Model(object):
             target = experience.reward
 
         # Clip reward
-        if clip:
-            if target > 1.:
-                target = 1.
-            elif target < -1.:
-                target = -1.
+        if target > 1.:
+            target = 1.
+        elif target < -1.:
+            target = -1.
 
         self.reward_memory.append(target)
 
@@ -130,12 +124,7 @@ class C4Model(object):
         history = self._model.fit(experience.old_state.state_representation(), target_f, epochs=1, verbose=0)
 
         self.epsilon.step(1)
-        self.gamma.step(1)
-        self.win_loss.step(1)
-        self.learning_rate.step(1)
-        self.sample_multiplier.step(1)
 
-        self.optimizer.lr = self.learning_rate.value
         self.steps += 1
 
         return history

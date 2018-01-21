@@ -131,13 +131,12 @@ def ai_vs_best(c4: C4Game, c4ai: C4Model, games: int = 100):
 
 
 def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilon_end: float, training_steps: int,
-             gamma_start: float, gamma_steps: int, gamma_end: float):
+             gamma: float):
     game_no = 0
     red_wins = 0
     black_wins = 0
 
-    stats_headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'mae', 'avg', 'med', 'std',
-                     'gamma']
+    stats_headers = ['red_wins', 'black_wins', 'epsilon', 'game_length', 'loss', 'mae', 'avg', 'med', 'std']
     stats_log_file = open('stats_log.csv', 'w')
     stats_log_writer = csv.DictWriter(stats_log_file, fieldnames=stats_headers)
     stats_log_writer.writeheader()
@@ -149,7 +148,7 @@ def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilo
 
     c4 = C4Game()
     c4ai = C4Model(epsilon_start=epsilon_start, epsilon_steps=epsilon_steps, epsilon_end=epsilon_end,
-                   gamma_start=gamma_start, gamma_steps=gamma_steps, gamma_end=gamma_end)
+                   gamma=gamma)
     try:
         if weights_file is not None:
             c4ai.load(weights_file)
@@ -206,13 +205,11 @@ def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilo
                 stats['avg'] = avg
                 stats['med'] = med
                 stats['std'] = stdev
-                stats['gamma'] = c4ai.gamma.value
                 stats_log_writer.writerow(stats)
 
                 print("Red: %d Black %d Steps: %d" % (red_wins, black_wins, steps))
-                print("Epsilon: %f Gamma: %f Loss: %f mae: %f LR: %f" % (
-                    c4ai.epsilon.value, c4ai.gamma.value, loss_sum / step_count, mae_sum / step_count,
-                    c4ai.optimizer.lr))
+                print("Epsilon: %f Gamma: %f Loss: %f mae: %f" % (
+                    c4ai.epsilon.value, c4ai.gamma, loss_sum / step_count, mae_sum / step_count))
                 print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
                 print(c4.display())
                 print("")
@@ -257,9 +254,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon-steps', type=int, default=100000)
     parser.add_argument('--epsilon-end', type=float, default=0.05)
     parser.add_argument('--training-steps', type=int, default=1000000)
-    parser.add_argument('--gamma-start', type=float, default=0.0)
-    parser.add_argument('--gamma-steps', type=int, default=0)
-    parser.add_argument('--gamma-end', type=float, default=0.9)
+    parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
@@ -268,9 +263,7 @@ if __name__ == '__main__':
 
     if args.mode == 'ava':
         ai_vs_ai(weights_file=args.weights_file, epsilon_start=args.epsilon_start, epsilon_steps=args.epsilon_steps,
-                 epsilon_end=args.epsilon_end, training_steps=args.training_steps, gamma_start=args.gamma_start,
-                 gamma_steps=args.gamma_steps,
-                 gamma_end=args.gamma_end)
+                 epsilon_end=args.epsilon_end, training_steps=args.training_steps, gamma=args.gamma)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     elif args.mode == 'hvh':
