@@ -37,14 +37,14 @@ class C4MoveResult(Enum):
     TIE = 3
 
 
-class C4ActionResult(object):
+class C4Experience(object):
     def __init__(self, action: C4Action, result: C4MoveResult, old_state: 'C4State', new_state: 'C4State',
-                 reward: float, done: bool = False):
+                 reward: float, terminal: bool = False):
         self.result = result
         self.old_state = old_state
         self.new_state = new_state
         self.reward = reward
-        self.done = done
+        self.terminal = terminal
         self.action = action
 
 
@@ -382,7 +382,7 @@ class C4Game(object):
 
         old_state = self.state.copy()
         move_result = self.state.move(action)
-        new_state = self.state
+        new_state = self.state.copy()
 
         reward = None
         done = None
@@ -405,8 +405,9 @@ class C4Game(object):
             reward = 0.
             done = False
 
-        action_result = C4ActionResult(action=action, result=move_result, old_state=old_state, new_state=new_state,
-                                       reward=reward, done=done)
+        action_result = C4Experience(action=action, result=move_result,
+                                     old_state=old_state, new_state=new_state,
+                                     reward=reward, terminal=done)
 
         if not self.duplicate:
             if self.current_turn() == C4Team.RED:

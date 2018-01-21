@@ -131,8 +131,7 @@ def ai_vs_best(c4: C4Game, c4ai: C4Model, games: int = 100):
 
 
 def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min: float, training_steps: int,
-             gamma: float, gamma_steps: int, gamma_max: float,
-             k: int):
+             gamma: float, gamma_steps: int, gamma_max: float):
     game_no = 0
     red_wins = 0
     black_wins = 0
@@ -150,7 +149,7 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
 
     c4 = C4Game()
     c4ai = C4Model(epsilon=epsilon, epsilon_steps=epsilon_steps, epsilon_min=epsilon_min,
-                   gamma=gamma, gamma_steps=gamma_steps, gamma_max=gamma_max, k=k)
+                   gamma=gamma, gamma_steps=gamma_steps, gamma_max=gamma_max)
     try:
         if weights_file is not None:
             c4ai.load(weights_file)
@@ -167,6 +166,8 @@ def ai_vs_ai(weights_file: str, epsilon: float, epsilon_steps: int, epsilon_min:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
         elif current_team == C4Team.RED:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
+            # move = c4.best_action(valid_moves=valid_moves)
+
         result = c4.action(move)
 
         if result == C4MoveResult.VICTORY:
@@ -262,7 +263,6 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.0)
     parser.add_argument('--gamma-steps', type=int, default=0)
     parser.add_argument('--gamma-max', type=float, default=0.9)
-    parser.add_argument('--k', type=int, default=2)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
@@ -273,7 +273,7 @@ if __name__ == '__main__':
         ai_vs_ai(weights_file=args.weights_file, epsilon=args.epsilon, epsilon_steps=args.epsilon_steps,
                  epsilon_min=args.epsilon_min, training_steps=args.training_steps, gamma=args.gamma,
                  gamma_steps=args.gamma_steps,
-                 gamma_max=args.gamma_max, k=args.k)
+                 gamma_max=args.gamma_max)
     elif args.mode == 'hva':
         human_vs_ai(args.weights_file)
     elif args.mode == 'hvh':

@@ -5,7 +5,7 @@ from keras.layers import Dense, Flatten, Input, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 
-from c4_game import C4Action, C4ActionResult, C4State
+from c4_game import C4Action, C4Experience, C4State
 
 
 class Ramp(object):
@@ -51,7 +51,7 @@ class Ramp(object):
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon: float = 1., epsilon_steps: int = 1000000, epsilon_min=0.05,
                  gamma=0.0, gamma_steps: int = 0, gamma_max: float = 0.9, learning_rate=0.01,
-                 learning_rate_start=0.01, k: int = 2):
+                 learning_rate_start=0.01):
 
         self.epsilon = Ramp(start=epsilon, end=epsilon_min, steps=epsilon_steps)
         self.gamma = Ramp(start=gamma, end=gamma_max, steps=gamma_steps)
@@ -62,19 +62,16 @@ class C4Model(object):
 
         self.reward_memory = []
         self.clipped = 0.
-        self.k = k
-        self.k_self = int(k / 2)
-        self.k_enemy = int(k / 2) + (k % 2)
+
         self.steps = 0
 
         input_heights = Input(shape=(7,))
         input_scores = Input(shape=(7, 8, 2))
 
         x = input_scores
-        x = Dense(128, activation='relu')(x)
-        x = Dense(128, activation='relu')(x)
+        x = Dense(64, activation='relu')(x)
+        x = Dense(64, activation='relu')(x)
         x = Flatten()(x)
-        x = Dense(256, activation='relu')(x)
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=[input_scores, input_heights], outputs=output)
@@ -89,38 +86,31 @@ class C4Model(object):
             set_session(tf.Session(config=config))
 
     # Data is the game state, labels are the action taken
-    def train(self, result: C4ActionResult, clip=True):
+    def train(self, experience: C4Experience, clip=True):
 
-        positive_reward_sum = 0.
-        negative_reward_sum = 0.
+        if not experience.terminal:
 
-        if not result.done:
+            new_state = experience.new_state.copy()
 
-            new_state = result.new_state.copy()
-            for k in range(0, self.k):
+            # Invert state perspective to match the enemy agent
+            new_state.invert_perspective()
 
-                # Invert state perspective to match the current agent
-                new_state.invert_perspective()
+            # We don't care about the enemy reward, just the most likely action
+            prediction = self._model.predict(new_state.state_representation())[0]
+            action = C4Action(np.argmax(prediction))
 
-                prediction = self._model.predict(new_state.state_representation())[0]
-                reward = np.amax(prediction)
-                action = C4Action(np.argmax(prediction))
+            # Apply the enemy action to advance the state, invert the perspective to match friendly agent
+            move_result = new_state.move(action)
+            new_state.invert_perspective()
 
-                # Enemy reward - new_state is the enemies state to act when k is even
-                if k % 2 == 0:
-                    negative_reward_sum += reward
-                # Self Reward - new state is our state to act on when k is odd
-                else:
-                    positive_reward_sum += reward
+            # Here is where our discounted future reward comes from (next friendly state in our perspective)
+            prediction = self._model.predict(new_state.state_representation())[0]
+            reward = np.amax(prediction)
 
-                # Apply the action, advance the state
-                move_result = new_state.move(action)
-
-            target = result.reward + self.gamma.value * \
-                     (positive_reward_sum / self.k_self - 0. * negative_reward_sum / self.k_enemy)
-
+            # Calculate discounted future reward
+            target = experience.reward + self.gamma.value * reward
         else:
-            target = result.reward
+            target = experience.reward
 
         # Clip reward
         if clip:
@@ -133,10 +123,10 @@ class C4Model(object):
 
         self.reward_memory.append(target)
 
-        target_f = self._model.predict(result.old_state.state_representation())
-        target_f[0][result.action.value] = target
+        target_f = self._model.predict(experience.old_state.state_representation())
+        target_f[0][experience.action.value] = target
 
-        history = self._model.fit(result.old_state.state_representation(), target_f, epochs=1, verbose=0)
+        history = self._model.fit(experience.old_state.state_representation(), target_f, epochs=1, verbose=0)
 
         self.epsilon.step(1)
         self.gamma.step(1)
