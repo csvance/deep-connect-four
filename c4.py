@@ -164,8 +164,7 @@ def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilo
         if current_team == C4Team.BLACK:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
         elif current_team == C4Team.RED:
-            # move = c4ai.predict(c4.state, valid_moves=valid_moves)
-            move = c4.best_action(valid_moves=valid_moves)
+            move = c4ai.predict(c4.state, valid_moves=valid_moves)
 
         result = c4.action(move)
 
@@ -215,7 +214,7 @@ def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilo
                 print(c4.display())
                 print("")
 
-                if (game_no != 0 and game_no % 25 == 0) or c4ai.steps >= training_steps:
+                if (game_no != 0 and game_no % 100 == 0) or c4ai.steps >= training_steps:
                     print("Saving...")
                     stats_log_file.flush()
                     c4ai.save(weights_file)
@@ -254,7 +253,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon-start', type=float, default=1.)
     parser.add_argument('--epsilon-steps', type=int, default=100000)
     parser.add_argument('--epsilon-end', type=float, default=0.05)
-    parser.add_argument('--training-steps', type=int, default=1000000)
+    parser.add_argument('--training-steps', type=int, default=2000000)
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
