@@ -164,7 +164,8 @@ def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilo
         if current_team == C4Team.BLACK:
             move = c4ai.predict(c4.state, valid_moves=valid_moves)
         elif current_team == C4Team.RED:
-            move = c4ai.predict(c4.state, valid_moves=valid_moves)
+            # move = c4ai.predict(c4.state, valid_moves=valid_moves)
+            move = c4.best_action(valid_moves=valid_moves)
 
         result = c4.action(move)
 
@@ -193,7 +194,7 @@ def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilo
                     mae_sum += history.history['mean_absolute_error'][0]
                     step_count += 1
 
-                min, max, avg, stdev, med, clipped, steps = c4ai.stats()
+                min, max, avg, stdev, med, steps = c4ai.stats()
 
                 stats = {}
                 stats['red_wins'] = red_wins
@@ -210,7 +211,7 @@ def ai_vs_ai(weights_file: str, epsilon_start: float, epsilon_steps: int, epsilo
                 print("Red: %d Black %d Steps: %d" % (red_wins, black_wins, steps))
                 print("Epsilon: %f Gamma: %f Loss: %f mae: %f" % (
                     c4ai.epsilon.value, c4ai.gamma, loss_sum / step_count, mae_sum / step_count))
-                print("Avg: %f Med: %f Std: %f Clipped: %f\nRange: [%f, %f]" % (avg, med, stdev, clipped, min, max))
+                print("Avg: %f Med: %f Std: %f\nRange: [%f, %f]" % (avg, med, stdev, min, max))
                 print(c4.display())
                 print("")
 

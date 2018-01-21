@@ -50,13 +50,12 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon_start: float = 1., epsilon_steps: int = 1000000, epsilon_end=0.05,
-                 gamma=0.9):
+                 gamma=0.9, learning_rate=0.001):
 
         self.epsilon = Ramp(start=epsilon_start, end=epsilon_end, steps=epsilon_steps)
         self.gamma = gamma
 
         self.reward_memory = []
-        self.clipped = 0.
 
         self.steps = 0
 
@@ -70,8 +69,7 @@ class C4Model(object):
         output = Dense(len(C4Action), activation='linear')(x)
 
         model = Model(inputs=[input_scores, input_heights], outputs=output)
-        self.optimizer = Adam(lr=0.001)
-        model.compile(optimizer=self.optimizer, loss='mse', metrics=['mae'])
+        model.compile(optimizer=Adam(lr=learning_rate), loss='mse', metrics=['mae'])
         model.summary()
         self._model = model
 
@@ -169,15 +167,12 @@ class C4Model(object):
         rewards = np.array(self.reward_memory)
         self.reward_memory = []
 
-        clipped = self.clipped
-        self.clipped = 0.
-
         min = np.min(rewards)
         max = np.max(rewards)
         avg = np.average(rewards)
         stdev = np.std(rewards)
         med = np.median(rewards)
-        return min, max, avg, stdev, med, clipped, self.steps
+        return min, max, avg, stdev, med, self.steps
 
     def save(self, path='weights.h5'):
         self._model.save_weights(filepath=path)
