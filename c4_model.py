@@ -50,7 +50,7 @@ class Ramp(object):
 
 class C4Model(object):
     def __init__(self, use_gpu=True, epsilon_start: float = 1., epsilon_steps: int = 1000000, epsilon_end=0.05,
-                 gamma=0.9, learning_rate=0.001):
+                 gamma=0.9, learning_rate=0.0001):
 
         self.epsilon = Ramp(start=epsilon_start, end=epsilon_end, steps=epsilon_steps)
         self.gamma = gamma
@@ -64,19 +64,19 @@ class C4Model(object):
         input_scores = Input(shape=(7, 8, 2))
 
         x_1 = input_board
-        x_1 = SeparableConv2D(64, 4, activation='relu')(x_1)
-        x_1 = SeparableConv2D(64, 1, activation='relu')(x_1)
+        x_1 = SeparableConv2D(128, 4, activation='relu')(x_1)
+        x_1 = SeparableConv2D(128, 1, activation='relu')(x_1)
         x_1 = Flatten()(x_1)
 
         x_2 = input_scores
-        x_2 = Dense(64, activation='relu')(x_2)
-        x_2 = Dense(64, activation='relu')(x_2)
+        x_2 = Dense(128, activation='relu')(x_2)
+        x_2 = Dense(128, activation='relu')(x_2)
         x_2 = Flatten()(x_2)
 
         x_3 = input_heights
 
         x = concatenate([x_1, x_2, x_3])
-        x = Dense(256, activation='relu')(x)
+        x = Dense(512, activation='relu')(x)
 
         output = Dense(len(C4Action), activation='linear')(x)
 

@@ -346,7 +346,7 @@ class C4Game(object):
 
         self.first_turn = C4Team.RED
 
-        self.memories = deque(maxlen=10000)
+        self.memories = deque(maxlen=50000)
 
         self.red_score = 0.
         self.black_score = 0.
