@@ -65,7 +65,8 @@ class C4Model(object):
 
         x_1 = input_board
         x_1 = SeparableConv2D(64, 4, activation='relu')(x_1)
-        x_1 = GlobalMaxPooling2D()(x_1)
+        x_1 = SeparableConv2D(64, 1, activation='relu')(x_1)
+        x_1 = Flatten()(x_1)
 
         x_2 = input_scores
         x_2 = Dense(64, activation='relu')(x_2)
