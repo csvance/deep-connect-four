@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from keras.backend import set_session
-from keras.layers import Dense, Flatten, Input, concatenate, SeparableConv2D, GlobalMaxPooling2D
+from keras.layers import Dense, Flatten, Input, concatenate, SeparableConv2D
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -64,19 +64,19 @@ class C4Model(object):
         input_scores = Input(shape=(7, 8, 2))
 
         x_1 = input_board
-        x_1 = SeparableConv2D(128, 4, activation='relu')(x_1)
-        x_1 = SeparableConv2D(128, 1, activation='relu')(x_1)
+        x_1 = SeparableConv2D(64, 4, activation='relu')(x_1)
+        x_1 = SeparableConv2D(64, 1, activation='relu')(x_1)
         x_1 = Flatten()(x_1)
 
         x_2 = input_scores
-        x_2 = Dense(128, activation='relu')(x_2)
-        x_2 = Dense(128, activation='relu')(x_2)
+        x_2 = Dense(64, activation='relu')(x_2)
+        x_2 = Dense(64, activation='relu')(x_2)
         x_2 = Flatten()(x_2)
 
         x_3 = input_heights
 
         x = concatenate([x_1, x_2, x_3])
-        x = Dense(512, activation='relu')(x)
+        x = Dense(256, activation='relu')(x)
 
         output = Dense(len(C4Action), activation='linear')(x)
 
